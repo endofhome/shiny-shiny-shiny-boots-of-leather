@@ -3,3 +3,6 @@
 *.iml
 build/
 .DS_Store
+out/
+credentials/
+src/main/kotlin/main.kt
