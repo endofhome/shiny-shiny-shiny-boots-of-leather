@@ -34,8 +34,8 @@ class Gmailer(private val gmail: Gmail) {
         return MimeMessage(session, ByteArrayInputStream(emailBytes))
     }
 
-    fun rawMessageContent(firstMatch: Message): ByteArray? {
-        val message = gmail.users().messages().get(user, firstMatch.id).setFormat("raw").execute()
+    fun rawMessageContent(message: Message): ByteArray? {
+        val message = gmail.users().messages().get(user, message.id).setFormat("raw").execute()
         return Base64(true).decode(message.raw)
     }
 }
