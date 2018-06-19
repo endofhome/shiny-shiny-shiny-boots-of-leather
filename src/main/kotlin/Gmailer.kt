@@ -3,11 +3,8 @@ import com.google.api.services.gmail.Gmail
 import com.google.api.services.gmail.Gmail.Users.Messages
 import com.google.api.services.gmail.model.Message
 import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
 import java.util.Properties
-import javax.mail.Message.RecipientType.TO
 import javax.mail.Session
-import javax.mail.internet.InternetAddress
 import javax.mail.internet.MimeMessage
 
 class Gmailer(private val gmail: Gmail) {
@@ -38,22 +35,4 @@ class Gmailer(private val gmail: Gmail) {
         val message = gmail.users().messages().get(user, cookedMessage.id).setFormat("raw").execute()
         return Base64(true).decode(message.raw)
     }
-}
-
-fun MimeMessage.withSender(senderAddress: InternetAddress): MimeMessage {
-    this.setFrom(senderAddress)
-    return this
-}
-
-fun MimeMessage.withRecipient(recipientAddress: InternetAddress): MimeMessage {
-    this.setRecipient(TO, recipientAddress)
-    return this
-}
-
-fun MimeMessage.encode(): Message {
-    val buffer = ByteArrayOutputStream()
-    this.writeTo(buffer)
-    val bytes = buffer.toByteArray()
-    val encodedEmail = Base64.encodeBase64URLSafeString(bytes)
-    return Message().setRaw(encodedEmail)
 }
