@@ -3,12 +3,17 @@ import com.google.api.services.gmail.Gmail
 import com.google.api.services.gmail.Gmail.Users.Messages
 import com.google.api.services.gmail.model.Message
 import java.io.ByteArrayInputStream
+import java.time.ZonedDateTime
 import java.util.Properties
 import javax.mail.Session
 import javax.mail.internet.MimeMessage
 
 class Gmailer(private val gmail: Gmail) {
     private val user = "me"
+    companion object {
+        val appName = "kotlin-gmailer-bot"
+
+    }
 
     fun messages(): Messages {
         return gmail.users().messages()
@@ -36,3 +41,5 @@ class Gmailer(private val gmail: Gmail) {
         return Base64(true).decode(message.raw)
     }
 }
+
+data class GmailerState(val lastEmailSent: ZonedDateTime, val emailContents: String)

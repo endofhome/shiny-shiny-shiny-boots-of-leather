@@ -5,4 +5,5 @@ build/
 .DS_Store
 out/
 credentials/
-src/main/kotlin/main.kt
+src/main/kotlin/testGmailer.kt
+src/main/kotlin/testDropbox.kt
