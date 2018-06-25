@@ -14,14 +14,14 @@ import java.io.File
 import java.nio.file.Files
 import java.nio.file.Paths
 
-object AuthorisedGmailProvider {
-    private const val applicationName = "Kotlin Gmailer Bot"
+class AuthorisedGmailProvider(private val port: Int) {
+    private val applicationName = "Kotlin RealGmailer Bot"
     private val jsonFactory = JacksonFactory.getDefaultInstance()
     private val credentialsFolder = File("credentials")
     private val clientSecretPath = Paths.get(credentialsFolder.path + File.separator + "client_secret.json")
     private val scopes = listOf(GmailScopes.MAIL_GOOGLE_COM)
 
-    operator fun invoke(port: Int): Gmail {
+    fun gmail(): Gmail {
         val httpTransport = GoogleNetHttpTransport.newTrustedTransport()
         return Gmail.Builder(httpTransport, jsonFactory, getCredentials(httpTransport, port))
                 .setApplicationName(applicationName)

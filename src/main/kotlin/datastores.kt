@@ -1,41 +1,26 @@
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
-import java.time.YearMonth
-import java.time.ZonedDateTime
 
-
-enum class State {
-    NEW, EMAIL_SENT, UNKNOWN_ERROR
+interface Datastore<T> {
+    fun currentApplicationState(): ApplicationState<T>
+    fun store(state: ApplicationState<T>)
 }
 
-interface Datastore {
-    fun applicationStateFor(date: ZonedDateTime): State
-    fun store(state: GmailerState)
-}
-
-class DropboxDatastore(appName: String, accessToken: String)  : Datastore {
-    private val simpleDropboxClient = SimpleDropboxClient(appName, accessToken)
-
+class DropboxDatastore<T>(private val dropboxClient: SimpleDropboxClient, private val appStateMetadata: FlatFileApplicationStateMetadata<T>)  : Datastore<T> {
     private val objectMapper = ObjectMapper().registerKotlinModule()
                                              .registerModule(JavaTimeModule())
-    private val stateFilename = "/gmailer_state"
 
-    override fun applicationStateFor(date: ZonedDateTime): State {
-        val appStateFileContents = simpleDropboxClient.readFile(stateFilename)
-        val applicationState = objectMapper.readValue(appStateFileContents, GmailerState::class.java)
-
-        return when {
-            applicationState.lastEmailSent.yearMonth() < date.yearMonth() -> State.NEW
-            applicationState.lastEmailSent.yearMonth() == date.yearMonth() -> State.EMAIL_SENT
-            else -> State.UNKNOWN_ERROR
-        }
+    override fun currentApplicationState(): ApplicationState<T> {
+        val appStateFileContents = dropboxClient.readFile(appStateMetadata.filename)
+        val t = objectMapper.readValue(appStateFileContents, appStateMetadata.stateClass)
+        return ApplicationState(t)
     }
 
-    override fun store(state: GmailerState) {
+    override fun store(state: ApplicationState<T>) {
         val fileContents = objectMapper.writeValueAsString(state)
-        simpleDropboxClient.writeFile(fileContents, stateFilename)
+        dropboxClient.writeFile(fileContents, appStateMetadata.filename)
     }
-
-    private fun ZonedDateTime.yearMonth(): YearMonth = YearMonth.from(this)
 }
+
+data class FlatFileApplicationStateMetadata<T>(val filename: String, val stateClass: Class<T>)

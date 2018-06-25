@@ -8,12 +8,15 @@ import java.util.Properties
 import javax.mail.Session
 import javax.mail.internet.MimeMessage
 
-class Gmailer(private val gmail: Gmail) {
-    private val user = "me"
-    companion object {
-        val appName = "kotlin-gmailer-bot"
+interface Gmailer {
+    fun lastEmailForQuery(queryString: String): Message?
+    fun send(message: Message)
+    fun newMessageFrom(emailBytes: ByteArray?): MimeMessage
+    fun rawMessageContent(cookedMessage: Message): ByteArray?
+}
 
-    }
+class RealGmailer(private val gmail: Gmail) {
+    private val user = "me"
 
     fun messages(): Messages {
         return gmail.users().messages()
@@ -42,4 +45,22 @@ class Gmailer(private val gmail: Gmail) {
     }
 }
 
+class StubGmailer(private val emails: List<Message>) : Gmailer {
+    override fun lastEmailForQuery(queryString: String): Message? {
+        return emails.last()
+    }
+
+    override fun newMessageFrom(emailBytes: ByteArray?): MimeMessage {
+        val props = Properties()
+        val session = Session.getDefaultInstance(props, null)
+        return MimeMessage(session, ByteArrayInputStream(emailBytes))
+    }
+
+    override fun rawMessageContent(cookedMessage: Message): ByteArray =
+            cookedMessage.raw.toByteArray()
+
+    override fun send(message: Message) { }
+}
+
+data class ApplicationState<T>(val state: T)
 data class GmailerState(val lastEmailSent: ZonedDateTime, val emailContents: String)
