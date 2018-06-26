@@ -1,5 +1,5 @@
-import WriteState.FAILURE
-import WriteState.SUCCESS
+import WriteState.Failure
+import WriteState.Success
 import com.dropbox.core.DbxApiException
 import com.dropbox.core.DbxException
 import com.dropbox.core.DbxRequestConfig
@@ -28,19 +28,19 @@ class HttpSimpleDropboxClient(identifier: String, accessToken: String) : SimpleD
                         .withMode(WriteMode.OVERWRITE)
                         .uploadAndFinish(inputStream)
             }
-            SUCCESS
+            Success()
         } catch (e: Exception) {
             when (e) {
                 is DbxApiException,
                 is DbxException,
-                is IOException      -> FAILURE
+                is IOException      -> Failure()
                 else                -> throw e
             }
         }
     }
 }
 
-class StubDropboxClient(initialFiles: List<FileLike>) : SimpleDropboxClient {
+open class StubDropboxClient(initialFiles: List<FileLike>) : SimpleDropboxClient {
     private var files = initialFiles
 
     override fun readFile(filename: String): String {
@@ -48,11 +48,16 @@ class StubDropboxClient(initialFiles: List<FileLike>) : SimpleDropboxClient {
         return fileMaybe?.contents ?: ""
     }
 
-    override fun writeFile(fileContents: String, filename: String): WriteState = SUCCESS
+    override fun writeFile(fileContents: String, filename: String): WriteState = Success()
 }
 
-enum class WriteState {
-    SUCCESS, FAILURE
+class StubDropboxClientThatCannotStore(initialFiles: List<FileLike>) : StubDropboxClient(initialFiles) {
+    override fun writeFile(fileContents: String, filename: String): WriteState = Failure()
+}
+
+sealed class WriteState {
+    class Success : WriteState()
+    class Failure : WriteState()
 }
 
 data class FileLike(val name: String, val contents: String)

@@ -1,3 +1,5 @@
+import WriteState.Failure
+import WriteState.Success
 import com.google.api.services.gmail.model.Message
 import java.time.YearMonth
 import java.time.ZonedDateTime
@@ -73,9 +75,11 @@ class GmailBot(private val gmailer: Gmailer, private val dropboxClient: SimpleDr
                 datastore.store(newState)
             }
 
-            // TODO test case, not checking whether it worked or not...
             val wasStateUpdated = dropboxState?.let {
-                "Current state has been stored in Dropbox"
+                when (it) {
+                    is Success -> "Current state has been stored in Dropbox"
+                    is Failure -> "Error - could not store state in Dropbox"
+                }
             } ?: ""
 
             val resultMessages = listOf(wasEmailSent, wasStateUpdated).filter { it.isNotBlank() }
