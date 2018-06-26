@@ -10,7 +10,7 @@ import javax.mail.internet.MimeMessage
 
 interface Gmailer {
     fun lastEmailForQuery(queryString: String): Message?
-    fun send(message: Message)
+    fun send(message: Message): Message?
     fun newMessageFrom(emailBytes: ByteArray?): MimeMessage
     fun rawMessageContent(cookedMessage: Message): ByteArray?
 }
@@ -29,8 +29,8 @@ class RealGmailer(private val gmail: Gmail) {
         return listResponse.messages.firstOrNull()
     }
 
-    fun send(message: Message) {
-        messages().send(user, message).execute()
+    fun send(message: Message): Message? {
+        return messages().send(user, message).execute()
     }
 
     fun newMessageFrom(emailBytes: ByteArray?): MimeMessage {
@@ -45,7 +45,7 @@ class RealGmailer(private val gmail: Gmail) {
     }
 }
 
-class StubGmailer(private val emails: List<Message>) : Gmailer {
+open class StubGmailer(private val emails: List<Message>) : Gmailer {
     override fun lastEmailForQuery(queryString: String): Message? {
         return emails.last()
     }
@@ -59,7 +59,11 @@ class StubGmailer(private val emails: List<Message>) : Gmailer {
     override fun rawMessageContent(cookedMessage: Message): ByteArray =
             cookedMessage.raw.toByteArray()
 
-    override fun send(message: Message) { }
+    override fun send(message: Message): Message? = Message()
+}
+
+class StubGmailerThatCannotSend(emails: List<Message>) : StubGmailer(emails) {
+    override fun send(message: Message): Message? = null
 }
 
 data class ApplicationState<T>(val state: T)

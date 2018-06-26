@@ -4,7 +4,7 @@ import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 
 interface Datastore<T> {
     fun currentApplicationState(): ApplicationState<T>
-    fun store(state: ApplicationState<T>)
+    fun store(state: ApplicationState<T>): WriteState
 }
 
 class DropboxDatastore<T>(private val dropboxClient: SimpleDropboxClient, private val appStateMetadata: FlatFileApplicationStateMetadata<T>)  : Datastore<T> {
@@ -17,9 +17,9 @@ class DropboxDatastore<T>(private val dropboxClient: SimpleDropboxClient, privat
         return ApplicationState(t)
     }
 
-    override fun store(state: ApplicationState<T>) {
+    override fun store(state: ApplicationState<T>): WriteState {
         val fileContents = objectMapper.writeValueAsString(state)
-        dropboxClient.writeFile(fileContents, appStateMetadata.filename)
+        return dropboxClient.writeFile(fileContents, appStateMetadata.filename)
     }
 }
 

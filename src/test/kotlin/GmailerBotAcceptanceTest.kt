@@ -97,5 +97,21 @@ class GmailerBotAcceptanceTest {
         val jobResult = GmailBot(StubGmailer(emails), dropboxClient).run(secondOfJune, listOf(2, 11, 12, 31))
         assertThat(jobResult, equalTo("No need to run: day of month is: 1, only running on day 2, 11, 12, 31 of each month"))
     }
-}
 
+    @Test
+    fun `Error message is provided when emails fail to be sent`() {
+        val state =
+                """
+          |{
+          |  "lastEmailSent": "${time.minusMonths(1)}",
+          |  "emailContents": "Last month's email data"
+          |}
+          |""".trimMargin()
+        val stateFile = FileLike("/gmailer_state", state)
+
+        val dropboxClient = StubDropboxClient(listOf(stateFile))
+        val emails = listOf(Message().setRaw("New email data"))
+        val jobResult = GmailBot(StubGmailerThatCannotSend(emails), dropboxClient).run(time, listOf(1))
+        assertThat(jobResult, equalTo("Error - could not send email/s"))
+    }
+}

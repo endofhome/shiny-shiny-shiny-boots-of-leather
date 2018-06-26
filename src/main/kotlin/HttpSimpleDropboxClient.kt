@@ -1,11 +1,16 @@
+import WriteState.FAILURE
+import WriteState.SUCCESS
+import com.dropbox.core.DbxApiException
+import com.dropbox.core.DbxException
 import com.dropbox.core.DbxRequestConfig
 import com.dropbox.core.v2.DbxClientV2
 import com.dropbox.core.v2.files.WriteMode
 import java.io.ByteArrayInputStream
+import java.io.IOException
 
 interface SimpleDropboxClient {
     fun readFile(filename: String): String
-    fun writeFile(fileContents: String, filename: String)
+    fun writeFile(fileContents: String, filename: String): WriteState
 }
 
 class HttpSimpleDropboxClient(identifier: String, accessToken: String) : SimpleDropboxClient {
@@ -16,11 +21,21 @@ class HttpSimpleDropboxClient(identifier: String, accessToken: String) : SimpleD
         return client.files().download(filename).inputStream.reader().readText()
     }
 
-    override fun writeFile(fileContents: String, filename: String) {
-        ByteArrayInputStream(fileContents.toByteArray()).use { inputStream ->
-            client.files().uploadBuilder(filename)
-                    .withMode(WriteMode.OVERWRITE)
-                    .uploadAndFinish(inputStream)
+    override fun writeFile(fileContents: String, filename: String): WriteState {
+        return try {
+            ByteArrayInputStream(fileContents.toByteArray()).use { inputStream ->
+                client.files().uploadBuilder(filename)
+                        .withMode(WriteMode.OVERWRITE)
+                        .uploadAndFinish(inputStream)
+            }
+            SUCCESS
+        } catch (e: Exception) {
+            when (e) {
+                is DbxApiException,
+                is DbxException,
+                is IOException      -> FAILURE
+                else                -> throw e
+            }
         }
     }
 }
@@ -33,8 +48,11 @@ class StubDropboxClient(initialFiles: List<FileLike>) : SimpleDropboxClient {
         return fileMaybe?.contents ?: ""
     }
 
-    override fun writeFile(fileContents: String, filename: String) { }
+    override fun writeFile(fileContents: String, filename: String): WriteState = SUCCESS
+}
 
+enum class WriteState {
+    SUCCESS, FAILURE
 }
 
 data class FileLike(val name: String, val contents: String)
