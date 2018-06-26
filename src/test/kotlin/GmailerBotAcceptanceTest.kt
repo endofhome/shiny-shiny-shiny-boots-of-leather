@@ -131,4 +131,21 @@ class GmailerBotAcceptanceTest {
         val jobResult = GmailBot(StubGmailer(emails), dropboxClient).run(time, listOf(1))
         assertThat(jobResult, equalTo("New email has been sent\nError - could not store state in Dropbox"))
     }
+
+    @Test
+    fun `Error message is provided when email raw content cannot be retrieved from Gmail`() {
+        val state =
+                """
+          |{
+          |  "lastEmailSent": "${time.minusMonths(1)}",
+          |  "emailContents": "Last month's email data"
+          |}
+          |""".trimMargin()
+        val stateFile = FileLike("/gmailer_state", state)
+
+        val dropboxClient = StubDropboxClientThatCannotStore(listOf(stateFile))
+        val emails = listOf(Message().setRaw("New email data"))
+        val jobResult = GmailBot(StubGmailerThatCannotRetrieveRawContent(emails), dropboxClient).run(time, listOf(1))
+        assertThat(jobResult, equalTo("Error - could not get raw message content for email"))
+    }
 }

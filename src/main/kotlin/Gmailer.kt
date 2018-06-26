@@ -41,7 +41,9 @@ class RealGmailer(private val gmail: Gmail) {
 
     fun rawMessageContent(cookedMessage: Message): ByteArray? {
         val message = gmail.users().messages().get(user, cookedMessage.id).setFormat("raw").execute()
-        return Base64(true).decode(message.raw)
+        return message?.let {
+            Base64(true).decode(message.raw)
+        }
     }
 }
 
@@ -56,7 +58,7 @@ open class StubGmailer(private val emails: List<Message>) : Gmailer {
         return MimeMessage(session, ByteArrayInputStream(emailBytes))
     }
 
-    override fun rawMessageContent(cookedMessage: Message): ByteArray =
+    override fun rawMessageContent(cookedMessage: Message): ByteArray? =
             cookedMessage.raw.toByteArray()
 
     override fun send(message: Message): Message? = Message()
@@ -64,6 +66,10 @@ open class StubGmailer(private val emails: List<Message>) : Gmailer {
 
 class StubGmailerThatCannotSend(emails: List<Message>) : StubGmailer(emails) {
     override fun send(message: Message): Message? = null
+}
+
+class StubGmailerThatCannotRetrieveRawContent(emails: List<Message>) : StubGmailer(emails) {
+    override fun rawMessageContent(cookedMessage: Message): ByteArray? = null
 }
 
 data class ApplicationState<T>(val state: T)

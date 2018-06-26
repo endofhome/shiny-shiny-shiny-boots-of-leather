@@ -25,9 +25,9 @@ class GmailBot(private val gmailer: Gmailer, private val dropboxClient: SimpleDr
         }
 
         val applicationState = datastore.currentApplicationState().state
-        val firstMatch: Message? = gmailer.lastEmailForQuery(gmailQuery)
-        val emailBytes = firstMatch?.let {
-             gmailer.rawMessageContent(firstMatch)
+        val searchResult: Message? = gmailer.lastEmailForQuery(gmailQuery)
+        val emailBytes = searchResult?.let {
+             gmailer.rawMessageContent(searchResult)
         }
 
         val lastEmailSent = applicationState.lastEmailSent
@@ -86,8 +86,7 @@ class GmailBot(private val gmailer: Gmailer, private val dropboxClient: SimpleDr
             return resultMessages.joinToString("\n")
         }
 
-        // TODO test case
-        return "Couldn't find any relevant emails to send."
+        return "Error - could not get raw message content for email"
     }
 
     private fun ZonedDateTime.yearMonth(): YearMonth = YearMonth.from(this)
