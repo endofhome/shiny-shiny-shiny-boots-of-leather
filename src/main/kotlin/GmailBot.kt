@@ -59,21 +59,21 @@ class GmailBot(private val gmailer: Gmailer, private val dropboxClient: SimpleDr
 
         rawMessageToSend?.let {
             val clonedMessage = gmailer.newMessageFrom(rawMessageToSend)
-                    .withSender(InternetAddress(fromEmailAddress, fromFullName))
-                    .withRecipient(InternetAddress(toEmailAddress, toFullName))
-                    .encode()
-            val gmailResponse = gmailer.send(clonedMessage)
+                    ?.withSender(InternetAddress(fromEmailAddress, fromFullName))
+                    ?.withRecipient(InternetAddress(toEmailAddress, toFullName))
+                    ?.encode()
+
+            val gmailResponse = clonedMessage?.let { gmailer.send(clonedMessage) }
+
+            val dropboxState = gmailResponse?.let {
+                val emailContents = clonedMessage.decodeRaw()?.let { String(it) }
+                val newState = emailContents?.let { ApplicationState(GmailerState(ZonedDateTime.now(), emailContents)) }
+                newState?.let { datastore.store(newState) }
+            }
 
             val wasEmailSent = gmailResponse?.let {
                 "New email has been sent"
             } ?: "Error - could not send email/s"
-
-
-            val dropboxState = gmailResponse?.let {
-                val emailContents = String(clonedMessage.decodeRaw())
-                val newState = ApplicationState(GmailerState(ZonedDateTime.now(), emailContents))
-                datastore.store(newState)
-            }
 
             val wasStateUpdated = dropboxState?.let {
                 when (it) {
