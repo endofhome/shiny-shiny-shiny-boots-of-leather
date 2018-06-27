@@ -184,7 +184,10 @@ open class StubDropboxClient(initialFiles: List<FileLike>) : SimpleDropboxClient
         return fileMaybe?.contents ?: ""
     }
 
-    override fun writeFile(fileContents: String, filename: String): WriteState = WriteState.Success()
+    override fun writeFile(fileContents: String, filename: String): WriteState {
+        files += FileLike(filename, fileContents)
+        return WriteState.Success()
+    }
 }
 
 class StubDropboxClientThatCannotStore(initialFiles: List<FileLike>) : StubDropboxClient(initialFiles) {

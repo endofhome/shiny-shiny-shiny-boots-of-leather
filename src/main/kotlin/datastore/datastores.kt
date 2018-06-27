@@ -21,7 +21,7 @@ class DropboxDatastore<T>(private val dropboxClient: SimpleDropboxClient, privat
     }
 
     override fun store(state: ApplicationState<T>): WriteState {
-        val fileContents = objectMapper.writeValueAsString(state)
+        val fileContents = objectMapper.writeValueAsString(state.state)
         return dropboxClient.writeFile(fileContents, appStateMetadata.filename)
     }
 }
