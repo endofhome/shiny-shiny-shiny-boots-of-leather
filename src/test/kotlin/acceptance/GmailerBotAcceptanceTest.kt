@@ -24,7 +24,7 @@ class GmailerBotAcceptanceTest {
           |  "emailContents": "Last month's email data"
           |}
           |""".trimMargin()
-        val stateFile = FileLike("/gmailer_state", state)
+        val stateFile = FileLike("/gmailer_state.json", state)
 
         val dropboxClient = StubDropboxClient(listOf(stateFile))
         val emails = listOf(Message().setRaw("New email data"))
@@ -44,7 +44,7 @@ class GmailerBotAcceptanceTest {
           |  "emailContents": "Fairly new email data"
           |}
           |""".trimMargin()
-        val stateFile = FileLike("/gmailer_state", state)
+        val stateFile = FileLike("/gmailer_state.json", state)
 
         val dropboxClient = StubDropboxClient(listOf(stateFile))
         val emails = listOf(Message().setRaw("New email data"))
@@ -61,7 +61,7 @@ class GmailerBotAcceptanceTest {
           |  "emailContents": "Next month's email data"
           |}
           |""".trimMargin()
-        val stateFile = FileLike("/gmailer_state", state)
+        val stateFile = FileLike("/gmailer_state.json", state)
 
         val dropboxClient = StubDropboxClient(listOf(stateFile))
         val emails = listOf(Message().setRaw("Last month's email data"))
@@ -78,7 +78,7 @@ class GmailerBotAcceptanceTest {
           |  "emailContents": "Already sent this one"
           |}
           |""".trimMargin()
-        val stateFile = FileLike("/gmailer_state", state)
+        val stateFile = FileLike("/gmailer_state.json", state)
 
         val dropboxClient = StubDropboxClient(listOf(stateFile))
         val emails = listOf(Message().setRaw("Already sent this one"))
@@ -95,7 +95,7 @@ class GmailerBotAcceptanceTest {
           |  "emailContents": "Last month's email data"
           |}
           |""".trimMargin()
-        val stateFile = FileLike("/gmailer_state", state)
+        val stateFile = FileLike("/gmailer_state.json", state)
 
         val dropboxClient = StubDropboxClient(listOf(stateFile))
         val emails = listOf(Message().setRaw("New email data"))
@@ -113,7 +113,7 @@ class GmailerBotAcceptanceTest {
           |  "emailContents": "Last month's email data"
           |}
           |""".trimMargin()
-        val stateFile = FileLike("/gmailer_state", state)
+        val stateFile = FileLike("/gmailer_state.json", state)
 
         val dropboxClient = StubDropboxClient(listOf(stateFile))
         val emails = listOf(Message().setRaw("New email data"))
@@ -130,7 +130,7 @@ class GmailerBotAcceptanceTest {
           |  "emailContents": "Last month's email data"
           |}
           |""".trimMargin()
-        val stateFile = FileLike("/gmailer_state", state)
+        val stateFile = FileLike("/gmailer_state.json", state)
 
         val dropboxClient = StubDropboxClientThatCannotStore(listOf(stateFile))
         val emails = listOf(Message().setRaw("New email data"))
@@ -147,7 +147,7 @@ class GmailerBotAcceptanceTest {
           |  "emailContents": "Last month's email data"
           |}
           |""".trimMargin()
-        val stateFile = FileLike("/gmailer_state", state)
+        val stateFile = FileLike("/gmailer_state.json", state)
 
         val dropboxClient = StubDropboxClientThatCannotStore(listOf(stateFile))
         val emails = listOf(Message().setRaw("New email data"))

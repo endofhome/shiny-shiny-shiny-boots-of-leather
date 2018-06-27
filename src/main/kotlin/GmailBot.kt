@@ -2,12 +2,14 @@ import com.google.api.services.gmail.model.Message
 import datastore.Datastore
 import datastore.DropboxDatastore
 import datastore.FlatFileApplicationStateMetadata
+import datastore.HttpSimpleDropboxClient
 import datastore.SimpleDropboxClient
 import datastore.WriteState.Failure
 import datastore.WriteState.Success
 import gmail.ApplicationState
 import gmail.Gmailer
 import gmail.GmailerState
+import gmail.HttpGmailer
 import gmail.encode
 import gmail.withRecipient
 import gmail.withSender
@@ -26,7 +28,7 @@ class GmailBot(private val gmailer: Gmailer, private val dropboxClient: SimpleDr
     fun run(now: ZonedDateTime, daysOfMonthToRun: List<Int>): String {
         val gmailQuery = System.getenv("KOTLIN_GMAILER_GMAIL_QUERY") ?: ""
 
-        val appStateMetadata = FlatFileApplicationStateMetadata("/gmailer_state", GmailerState::class.java)
+        val appStateMetadata = FlatFileApplicationStateMetadata("/gmailer_state.json", GmailerState::class.java)
         val datastore: Datastore<GmailerState> = DropboxDatastore(dropboxClient, appStateMetadata)
         val dayOfMonth = now.dayOfMonth
 
