@@ -1,10 +1,12 @@
-import WriteState.Failure
-import WriteState.Success
+package datastore
+
 import com.dropbox.core.DbxApiException
 import com.dropbox.core.DbxException
 import com.dropbox.core.DbxRequestConfig
 import com.dropbox.core.v2.DbxClientV2
 import com.dropbox.core.v2.files.WriteMode
+import datastore.WriteState.Failure
+import datastore.WriteState.Success
 import java.io.ByteArrayInputStream
 import java.io.IOException
 
@@ -40,24 +42,8 @@ class HttpSimpleDropboxClient(identifier: String, accessToken: String) : SimpleD
     }
 }
 
-open class StubDropboxClient(initialFiles: List<FileLike>) : SimpleDropboxClient {
-    private var files = initialFiles
-
-    override fun readFile(filename: String): String {
-        val fileMaybe = files.find { it.name == filename }
-        return fileMaybe?.contents ?: ""
-    }
-
-    override fun writeFile(fileContents: String, filename: String): WriteState = Success()
-}
-
-class StubDropboxClientThatCannotStore(initialFiles: List<FileLike>) : StubDropboxClient(initialFiles) {
-    override fun writeFile(fileContents: String, filename: String): WriteState = Failure()
-}
-
 sealed class WriteState {
     class Success : WriteState()
     class Failure : WriteState()
 }
 
-data class FileLike(val name: String, val contents: String)

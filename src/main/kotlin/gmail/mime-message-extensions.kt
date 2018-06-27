@@ -1,3 +1,5 @@
+package gmail
+
 import com.google.api.client.repackaged.org.apache.commons.codec.binary.Base64
 import com.google.api.services.gmail.model.Message
 import java.io.ByteArrayOutputStream

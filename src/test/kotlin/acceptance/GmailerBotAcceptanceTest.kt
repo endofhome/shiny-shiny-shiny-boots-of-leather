@@ -1,6 +1,12 @@
+package acceptance
+
+import GmailBot
 import com.google.api.services.gmail.model.Message
 import com.natpryce.hamkrest.assertion.assertThat
 import com.natpryce.hamkrest.equalTo
+import datastore.SimpleDropboxClient
+import datastore.WriteState
+import gmail.Gmailer
 import org.junit.Test
 import java.time.ZoneOffset.UTC
 import java.time.ZonedDateTime
@@ -149,3 +155,40 @@ class GmailerBotAcceptanceTest {
         assertThat(jobResult, equalTo("Error - could not get raw message content for email"))
     }
 }
+
+open class StubGmailer(private val emails: List<Message>) : Gmailer {
+    override fun lastEmailForQuery(queryString: String): Message? {
+        return emails.last()
+    }
+
+    override fun rawContentOf(cookedMessage: Message): ByteArray? =
+            cookedMessage.raw.toByteArray()
+
+    override fun send(message: Message): Message? = Message()
+}
+
+class StubGmailerThatCannotSend(emails: List<Message>) : StubGmailer(emails) {
+    override fun send(message: Message): Message? = null
+}
+
+class StubGmailerThatCannotRetrieveRawContent(emails: List<Message>) : StubGmailer(emails) {
+    override fun rawContentOf(cookedMessage: Message): ByteArray? = null
+}
+
+
+open class StubDropboxClient(initialFiles: List<FileLike>) : SimpleDropboxClient {
+    private var files = initialFiles
+
+    override fun readFile(filename: String): String {
+        val fileMaybe = files.find { it.name == filename }
+        return fileMaybe?.contents ?: ""
+    }
+
+    override fun writeFile(fileContents: String, filename: String): WriteState = WriteState.Success()
+}
+
+class StubDropboxClientThatCannotStore(initialFiles: List<FileLike>) : StubDropboxClient(initialFiles) {
+    override fun writeFile(fileContents: String, filename: String): WriteState = WriteState.Failure()
+}
+
+data class FileLike(val name: String, val contents: String)

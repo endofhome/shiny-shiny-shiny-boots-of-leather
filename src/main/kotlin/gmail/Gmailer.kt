@@ -1,3 +1,5 @@
+package gmail
+
 import com.google.api.client.repackaged.org.apache.commons.codec.binary.Base64
 import com.google.api.services.gmail.Gmail
 import com.google.api.services.gmail.Gmail.Users.Messages
@@ -47,25 +49,6 @@ class HttpGmailer(private val gmail: Gmail) : Gmailer {
     private fun messages(): Messages {
         return gmail.users().messages()
     }
-}
-
-open class StubGmailer(private val emails: List<Message>) : Gmailer {
-    override fun lastEmailForQuery(queryString: String): Message? {
-        return emails.last()
-    }
-
-    override fun rawContentOf(cookedMessage: Message): ByteArray? =
-            cookedMessage.raw.toByteArray()
-
-    override fun send(message: Message): Message? = Message()
-}
-
-class StubGmailerThatCannotSend(emails: List<Message>) : StubGmailer(emails) {
-    override fun send(message: Message): Message? = null
-}
-
-class StubGmailerThatCannotRetrieveRawContent(emails: List<Message>) : StubGmailer(emails) {
-    override fun rawContentOf(cookedMessage: Message): ByteArray? = null
 }
 
 data class ApplicationState<T>(val state: T)
