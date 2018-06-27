@@ -13,11 +13,21 @@ import gmail.HttpGmailer
 import gmail.encode
 import gmail.withRecipient
 import gmail.withSender
+import java.io.File
 import java.time.YearMonth
 import java.time.ZonedDateTime
 import java.time.format.TextStyle
 import java.util.Locale
 import javax.mail.internet.InternetAddress
+
+fun main(args: Array<String>) {
+    val gmail = gmail.AuthorisedGmailProvider(4000).gmail()
+    val gmailer = HttpGmailer(gmail)
+    val dropboxAccessToken = File("credentials/access_token").readText()
+    val dropboxClient = HttpSimpleDropboxClient(GmailBot.appName, dropboxAccessToken)
+    val result = GmailBot(gmailer, dropboxClient).run(ZonedDateTime.now(), listOf(1))
+    println(result)
+}
 
 class GmailBot(private val gmailer: Gmailer, private val dropboxClient: SimpleDropboxClient) {
 
