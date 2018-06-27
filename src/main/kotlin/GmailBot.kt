@@ -59,14 +59,16 @@ class GmailBot(private val gmailer: Gmailer, private val dropboxClient: SimpleDr
 
         rawMessageToSend?.let {
             val clonedMessage = gmailer.newMessageFrom(rawMessageToSend)
-                    ?.withSender(InternetAddress(fromEmailAddress, fromFullName))
-                    ?.withRecipient(InternetAddress(toEmailAddress, toFullName))
-                    ?.encode()
+            val clonedMessageWithNewHeader = clonedMessage?.run {
+                    withSender(InternetAddress(fromEmailAddress, fromFullName))
+                    withRecipient(InternetAddress(toEmailAddress, toFullName))
+                    encode()
+            }
 
-            val gmailResponse = clonedMessage?.let { gmailer.send(clonedMessage) }
+            val gmailResponse = clonedMessageWithNewHeader?.let { gmailer.send(clonedMessageWithNewHeader) }
 
             val dropboxState = gmailResponse?.let {
-                val emailContents = clonedMessage.decodeRaw()?.let { String(it) }
+                val emailContents = clonedMessageWithNewHeader.decodeRaw()?.let { String(it) }
                 val newState = emailContents?.let { ApplicationState(GmailerState(ZonedDateTime.now(), emailContents)) }
                 newState?.let { datastore.store(newState) }
             }
