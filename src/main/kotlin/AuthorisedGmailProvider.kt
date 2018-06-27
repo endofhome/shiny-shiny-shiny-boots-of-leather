@@ -15,7 +15,7 @@ import java.nio.file.Files
 import java.nio.file.Paths
 
 class AuthorisedGmailProvider(private val port: Int) {
-    private val applicationName = "Kotlin RealGmailer Bot"
+    private val applicationName = "Kotlin Gmailer Bot"
     private val jsonFactory = JacksonFactory.getDefaultInstance()
     private val credentialsFolder = File("credentials")
     private val clientSecretPath = Paths.get(credentialsFolder.path + File.separator + "client_secret.json")

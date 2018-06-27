@@ -12,18 +12,20 @@ import javax.mail.internet.MimeMessage
 interface Gmailer {
     fun lastEmailForQuery(queryString: String): Message?
     fun send(message: Message): Message?
-    fun newMessageFrom(emailBytes: ByteArray?): MimeMessage?
-    fun rawMessageContent(cookedMessage: Message): ByteArray?
+    fun rawContentOf(cookedMessage: Message): ByteArray?
+    fun newMessageFrom(emailBytes: ByteArray?): MimeMessage? {
+        val props = Properties()
+        val sessionMaybe: Session? = Session.getDefaultInstance(props, null)
+        return sessionMaybe?.let { session ->
+            MimeMessage(session, ByteArrayInputStream(emailBytes))
+        }
+    }
 }
 
-class RealGmailer(private val gmail: Gmail) {
+class HttpGmailer(private val gmail: Gmail) : Gmailer {
     private val user = "me"
 
-    fun messages(): Messages {
-        return gmail.users().messages()
-    }
-
-    fun lastEmailForQuery(queryString: String): Message? {
+    override fun lastEmailForQuery(queryString: String): Message? {
         val messages: Messages = messages()
         val listResponse: ListMessagesResponse? = messages.list(user).setQ(queryString).execute()
 
@@ -31,21 +33,19 @@ class RealGmailer(private val gmail: Gmail) {
         return listResponse?.messages?.firstOrNull()
     }
 
-    fun send(message: Message): Message? {
+    override fun send(message: Message): Message? {
         return messages().send(user, message).execute()
     }
 
-    fun newMessageFrom(emailBytes: ByteArray?): MimeMessage {
-        val props = Properties()
-        val session: Session? = Session.getDefaultInstance(props, null)
-        return MimeMessage(session, ByteArrayInputStream(emailBytes))
-    }
-
-    fun rawMessageContent(cookedMessage: Message): ByteArray? {
+    override fun rawContentOf(cookedMessage: Message): ByteArray? {
         val message: Message? = gmail.users().messages().get(user, cookedMessage.id).setFormat("raw").execute()
         return message?.let {
             Base64(true).decode(message.raw)
         }
+    }
+
+    private fun messages(): Messages {
+        return gmail.users().messages()
     }
 }
 
@@ -54,15 +54,7 @@ open class StubGmailer(private val emails: List<Message>) : Gmailer {
         return emails.last()
     }
 
-    override fun newMessageFrom(emailBytes: ByteArray?): MimeMessage? {
-        val props = Properties()
-        val sessionMaybe: Session? = Session.getDefaultInstance(props, null)
-        return sessionMaybe?.let { session ->
-            MimeMessage(session, ByteArrayInputStream(emailBytes))
-        }
-    }
-
-    override fun rawMessageContent(cookedMessage: Message): ByteArray? =
+    override fun rawContentOf(cookedMessage: Message): ByteArray? =
             cookedMessage.raw.toByteArray()
 
     override fun send(message: Message): Message? = Message()
@@ -73,7 +65,7 @@ class StubGmailerThatCannotSend(emails: List<Message>) : StubGmailer(emails) {
 }
 
 class StubGmailerThatCannotRetrieveRawContent(emails: List<Message>) : StubGmailer(emails) {
-    override fun rawMessageContent(cookedMessage: Message): ByteArray? = null
+    override fun rawContentOf(cookedMessage: Message): ByteArray? = null
 }
 
 data class ApplicationState<T>(val state: T)

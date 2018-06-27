@@ -27,7 +27,7 @@ class GmailBot(private val gmailer: Gmailer, private val dropboxClient: SimpleDr
         val applicationState = datastore.currentApplicationState().state
         val searchResult: Message? = gmailer.lastEmailForQuery(gmailQuery)
         val emailBytes = searchResult?.let {
-             gmailer.rawMessageContent(searchResult)
+             gmailer.rawContentOf(searchResult)
         }
 
         val lastEmailSent = applicationState.lastEmailSent
