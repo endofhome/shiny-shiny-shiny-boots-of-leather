@@ -11,8 +11,8 @@ import gmail.Gmailer
 import gmail.GmailerState
 import gmail.HttpGmailer
 import gmail.encode
-import gmail.withRecipient
-import gmail.withSender
+import gmail.replaceRecipient
+import gmail.replaceSender
 import java.io.File
 import java.time.YearMonth
 import java.time.ZonedDateTime
@@ -82,8 +82,8 @@ class GmailBot(private val gmailer: Gmailer, private val dropboxClient: SimpleDr
         rawMessageToSend?.let {
             val clonedMessage = gmailer.newMessageFrom(rawMessageToSend)
             val clonedMessageWithNewHeader = clonedMessage?.run {
-                    withSender(InternetAddress(fromEmailAddress, fromFullName))
-                    withRecipient(InternetAddress(toEmailAddress, toFullName))
+                    replaceSender(InternetAddress(fromEmailAddress, fromFullName))
+                    replaceRecipient(InternetAddress(toEmailAddress, toFullName))
                     encode()
             }
 

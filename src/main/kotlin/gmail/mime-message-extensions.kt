@@ -6,12 +6,12 @@ import java.io.ByteArrayOutputStream
 import javax.mail.internet.InternetAddress
 import javax.mail.internet.MimeMessage
 
-fun MimeMessage.withSender(senderAddress: InternetAddress): MimeMessage {
+fun MimeMessage.replaceSender(senderAddress: InternetAddress): MimeMessage {
     this.setFrom(senderAddress)
     return this
 }
 
-fun MimeMessage.withRecipient(recipientAddress: InternetAddress): MimeMessage {
+fun MimeMessage.replaceRecipient(recipientAddress: InternetAddress): MimeMessage {
     this.setRecipient(javax.mail.Message.RecipientType.TO, recipientAddress)
     return this
 }
