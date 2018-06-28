@@ -51,5 +51,5 @@ class HttpGmailer(private val gmail: Gmail) : Gmailer {
     }
 }
 
-data class ApplicationState<T>(val state: T)
-data class GmailerState(val lastEmailSent: ZonedDateTime, val emailContents: String)
+interface ApplicationState
+data class GmailerState(val lastEmailSent: ZonedDateTime, val emailContents: String) : ApplicationState

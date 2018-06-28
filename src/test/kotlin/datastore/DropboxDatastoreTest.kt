@@ -9,7 +9,7 @@ import org.junit.Test
 
 class DropboxDatastoreTest {
 
-    data class TestAppState(val someProperty: String)
+    data class TestAppState(val someProperty: String) : ApplicationState
 
     @Test
     fun `correct state is stored`() {
@@ -17,11 +17,10 @@ class DropboxDatastoreTest {
         val initialFiles: List<FileLike> = emptyList()
         val dropboxDatastore = DropboxDatastore(StubDropboxClient(initialFiles), metadata)
         val testAppState = TestAppState("some new state")
-        val newAppState = ApplicationState(testAppState)
 
-        dropboxDatastore.store(newAppState)
+        dropboxDatastore.store(testAppState)
 
-        assertThat(dropboxDatastore.currentApplicationState(), equalTo(newAppState))
+        assertThat(dropboxDatastore.currentApplicationState(), equalTo(testAppState))
     }
 
 }

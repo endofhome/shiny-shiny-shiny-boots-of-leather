@@ -5,23 +5,22 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import gmail.ApplicationState
 
-interface Datastore<T> {
-    fun currentApplicationState(): ApplicationState<T>
-    fun store(state: ApplicationState<T>): WriteState
+interface Datastore<T : ApplicationState> {
+    fun currentApplicationState(): T
+    fun store(state: T): WriteState
 }
 
-class DropboxDatastore<T>(private val dropboxClient: SimpleDropboxClient, private val appStateMetadata: FlatFileApplicationStateMetadata<T>)  : Datastore<T> {
+class DropboxDatastore<T : ApplicationState>(private val dropboxClient: SimpleDropboxClient, private val appStateMetadata: FlatFileApplicationStateMetadata<T>)  : Datastore<T> {
     private val objectMapper = ObjectMapper().registerKotlinModule()
                                              .registerModule(JavaTimeModule())
 
-    override fun currentApplicationState(): ApplicationState<T> {
+    override fun currentApplicationState(): T {
         val appStateFileContents = dropboxClient.readFile(appStateMetadata.filename)
-        val t = objectMapper.readValue(appStateFileContents, appStateMetadata.stateClass)
-        return ApplicationState(t)
+        return objectMapper.readValue(appStateFileContents, appStateMetadata.stateClass)
     }
 
-    override fun store(state: ApplicationState<T>): WriteState {
-        val fileContents = objectMapper.writeValueAsString(state.state)
+    override fun store(state: T): WriteState {
+        val fileContents = objectMapper.writeValueAsString(state)
         return dropboxClient.writeFile(fileContents, appStateMetadata.filename)
     }
 }

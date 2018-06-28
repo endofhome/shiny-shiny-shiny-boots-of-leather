@@ -6,7 +6,6 @@ import datastore.HttpSimpleDropboxClient
 import datastore.SimpleDropboxClient
 import datastore.WriteState.Failure
 import datastore.WriteState.Success
-import gmail.ApplicationState
 import gmail.Gmailer
 import gmail.GmailerState
 import gmail.HttpGmailer
@@ -46,7 +45,7 @@ class GmailBot(private val gmailer: Gmailer, private val dropboxClient: SimpleDr
             return("No need to run: day of month is: $dayOfMonth, only running on day ${daysOfMonthToRun.joinToString(", ")} of each month")
         }
 
-        val applicationState = datastore.currentApplicationState().state
+        val applicationState = datastore.currentApplicationState()
         val searchResult: Message? = gmailer.lastEmailForQuery(gmailQuery)
         val emailBytes = searchResult?.let {
              gmailer.rawContentOf(searchResult)
@@ -91,7 +90,7 @@ class GmailBot(private val gmailer: Gmailer, private val dropboxClient: SimpleDr
 
             val dropboxState = gmailResponse?.let {
                 val emailContents = clonedMessageWithNewHeader.decodeRaw()?.let { String(it) }
-                val newState = emailContents?.let { ApplicationState(GmailerState(ZonedDateTime.now(), emailContents)) }
+                val newState = emailContents?.let { GmailerState(ZonedDateTime.now(), emailContents) }
                 newState?.let { datastore.store(newState) }
             }
 
