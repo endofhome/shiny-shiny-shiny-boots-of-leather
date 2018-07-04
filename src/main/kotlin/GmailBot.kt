@@ -1,4 +1,13 @@
+import GmailBot.Companion.RequiredConfig
+import GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_BCC_ADDRESS
+import GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_FROM_ADDRESS
+import GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_FROM_FULLNAME
+import GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_GMAIL_QUERY
+import GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_TO_ADDRESS
+import GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_TO_FULLNAME
 import com.google.api.services.gmail.model.Message
+import config.Configuration
+import config.Configurator
 import datastore.Datastore
 import datastore.DropboxDatastore
 import datastore.FlatFileApplicationStateMetadata
@@ -13,7 +22,7 @@ import gmail.HttpGmailer
 import gmail.encode
 import gmail.replaceRecipient
 import gmail.replaceSender
-import java.io.File
+import java.nio.file.Paths
 import java.time.YearMonth
 import java.time.ZonedDateTime
 import java.time.format.TextStyle
@@ -22,22 +31,35 @@ import javax.mail.Message.RecipientType
 import javax.mail.internet.InternetAddress
 
 fun main(args: Array<String>) {
-    val gmail = AuthorisedGmailProvider(4000, GmailBot.appName).gmail()
+    val requiredConfig: List<RequiredConfig> = RequiredConfig.values().toList()
+    val config = Configurator(requiredConfig, Paths.get("credentials"))
+    val gmail = AuthorisedGmailProvider(4000, GmailBot.appName, config).gmail()
     val gmailer = HttpGmailer(gmail)
-    val dropboxAccessToken = File("credentials/access_token").readText()
-    val dropboxClient = HttpSimpleDropboxClient(GmailBot.appName, dropboxAccessToken)
-    val result = GmailBot(gmailer, dropboxClient).run(ZonedDateTime.now(), listOf(1))
+    val dropboxClient = HttpSimpleDropboxClient(GmailBot.appName, config)
+    val result = GmailBot(gmailer, dropboxClient, config).run(ZonedDateTime.now(), listOf(4))
     println(result)
 }
 
-class GmailBot(private val gmailer: Gmailer, private val dropboxClient: SimpleDropboxClient) {
+class GmailBot(private val gmailer: Gmailer, private val dropboxClient: SimpleDropboxClient, private val config: Configuration) {
+
 
     companion object {
         const val appName = "kotlin-gmailer-bot"
+
+        enum class RequiredConfig {
+            KOTLIN_GMAILER_GMAIL_QUERY,
+            KOTLIN_GMAILER_FROM_ADDRESS,
+            KOTLIN_GMAILER_FROM_FULLNAME,
+            KOTLIN_GMAILER_TO_ADDRESS,
+            KOTLIN_GMAILER_TO_FULLNAME,
+            KOTLIN_GMAILER_BCC_ADDRESS,
+            KOTLIN_GMAILER_GMAIL_CLIENT_SECRET,
+            KOTLIN_GMAILER_DROPBOX_ACCESS_TOKEN
+        }
     }
 
     fun run(now: ZonedDateTime, daysOfMonthToRun: List<Int>): String {
-        val gmailQuery = System.getenv("KOTLIN_GMAILER_GMAIL_QUERY") ?: ""
+        val gmailQuery = config[KOTLIN_GMAILER_GMAIL_QUERY]!!
 
         val appStateMetadata = FlatFileApplicationStateMetadata("/gmailer_state.json", GmailerState::class.java)
         val datastore: Datastore<GmailerState> = DropboxDatastore(dropboxClient, appStateMetadata)
@@ -75,11 +97,11 @@ class GmailBot(private val gmailer: Gmailer, private val dropboxClient: SimpleDr
             emailBytes.contentEquals(applicationState.emailContents.toByteArray())
 
     private fun tryToSendEmail(datastore: Datastore<GmailerState>, rawMessageToSend: ByteArray?): String {
-        val fromEmailAddress = System.getenv("KOTLIN_GMAILER_FROM_ADDRESS") ?: ""
-        val fromFullName = System.getenv("KOTLIN_GMAILER_FROM_FULLNAME") ?: ""
-        val toEmailAddress = System.getenv("KOTLIN_GMAILER_TO_ADDRESS") ?: ""
-        val toFullName = System.getenv("KOTLIN_GMAILER_TO_FULLNAME") ?: ""
-        val bccEmailAddress = System.getenv("KOTLIN_GMAILER_BCC_ADDRESS") ?: ""
+        val fromEmailAddress = config[KOTLIN_GMAILER_FROM_ADDRESS]!!
+        val fromFullName = config[KOTLIN_GMAILER_FROM_FULLNAME]!!
+        val toEmailAddress = config[KOTLIN_GMAILER_TO_ADDRESS]!!
+        val toFullName = config[KOTLIN_GMAILER_TO_FULLNAME]!!
+        val bccEmailAddress = config[KOTLIN_GMAILER_BCC_ADDRESS]!!
 
         rawMessageToSend?.let {
             val clonedMessage = gmailer.newMessageFrom(rawMessageToSend)

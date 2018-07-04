@@ -1,26 +1,25 @@
 package gmail
 
+import GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_GMAIL_CLIENT_SECRET
 import com.google.api.client.auth.oauth2.Credential
 import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp
 import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow
 import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets
+import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets.load
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport
 import com.google.api.client.http.javanet.NetHttpTransport
 import com.google.api.client.json.jackson2.JacksonFactory
 import com.google.api.client.util.store.FileDataStoreFactory
 import com.google.api.services.gmail.Gmail
 import com.google.api.services.gmail.GmailScopes
-import java.io.BufferedReader
+import config.Configuration
 import java.io.File
-import java.nio.file.Files
-import java.nio.file.Paths
 
-class AuthorisedGmailProvider(private val port: Int, appName: String) {
+class AuthorisedGmailProvider(private val port: Int, appName: String, private val config: Configuration) {
     private val applicationName = appName
     private val jsonFactory = JacksonFactory.getDefaultInstance()
     private val credentialsFolder = File("credentials")
-    private val clientSecretPath = Paths.get(credentialsFolder.path + File.separator + "client_secret.json")
     private val scopes = listOf(GmailScopes.MAIL_GOOGLE_COM)
 
     fun gmail(): Gmail {
@@ -31,8 +30,7 @@ class AuthorisedGmailProvider(private val port: Int, appName: String) {
     }
 
     private fun getCredentials(httpTransport: NetHttpTransport, port: Int): Credential {
-        val clientSecretReader: BufferedReader? = Files.newBufferedReader(clientSecretPath)
-        val clientSecrets: GoogleClientSecrets = GoogleClientSecrets.load(jsonFactory, clientSecretReader)
+        val clientSecrets: GoogleClientSecrets = load(jsonFactory, config[KOTLIN_GMAILER_GMAIL_CLIENT_SECRET]!!.reader())
 
         val flow = GoogleAuthorizationCodeFlow.Builder(
                 httpTransport, jsonFactory, clientSecrets, scopes)
