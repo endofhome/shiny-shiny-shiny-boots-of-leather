@@ -3,6 +3,7 @@ package gmail
 import com.google.api.client.repackaged.org.apache.commons.codec.binary.Base64
 import com.google.api.services.gmail.model.Message
 import java.io.ByteArrayOutputStream
+import javax.mail.Message.RecipientType
 import javax.mail.internet.InternetAddress
 import javax.mail.internet.MimeMessage
 
@@ -11,8 +12,8 @@ fun MimeMessage.replaceSender(senderAddress: InternetAddress): MimeMessage {
     return this
 }
 
-fun MimeMessage.replaceRecipient(recipientAddress: InternetAddress): MimeMessage {
-    this.setRecipient(javax.mail.Message.RecipientType.TO, recipientAddress)
+fun MimeMessage.replaceRecipient(recipientAddress: InternetAddress, recipientType: RecipientType): MimeMessage {
+    this.setRecipient(recipientType, recipientAddress)
     return this
 }
 

@@ -17,6 +17,7 @@ import java.time.YearMonth
 import java.time.ZonedDateTime
 import java.time.format.TextStyle
 import java.util.Locale
+import javax.mail.Message.RecipientType
 import javax.mail.internet.InternetAddress
 
 fun main(args: Array<String>) {
@@ -77,12 +78,14 @@ class GmailBot(private val gmailer: Gmailer, private val dropboxClient: SimpleDr
         val fromFullName = System.getenv("KOTLIN_GMAILER_FROM_FULLNAME") ?: ""
         val toEmailAddress = System.getenv("KOTLIN_GMAILER_TO_ADDRESS") ?: ""
         val toFullName = System.getenv("KOTLIN_GMAILER_TO_FULLNAME") ?: ""
+        val bccEmailAddress = System.getenv("KOTLIN_GMAILER_BCC_ADDRESS") ?: ""
 
         rawMessageToSend?.let {
             val clonedMessage = gmailer.newMessageFrom(rawMessageToSend)
             val clonedMessageWithNewHeader = clonedMessage?.run {
                     replaceSender(InternetAddress(fromEmailAddress, fromFullName))
-                    replaceRecipient(InternetAddress(toEmailAddress, toFullName))
+                    replaceRecipient(InternetAddress(toEmailAddress, toFullName), RecipientType.TO)
+                    replaceRecipient(InternetAddress(bccEmailAddress), RecipientType.BCC)
                     encode()
             }
 
