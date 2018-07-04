@@ -30,8 +30,6 @@ class HttpGmailer(private val gmail: Gmail) : Gmailer {
     override fun lastEmailForQuery(queryString: String): Message? {
         val messages: Messages = messages()
         val listResponse: ListMessagesResponse? = messages.list(user).setQ(queryString).execute()
-
-        // TODO: get the most recently received email, assuming it was for the month in question.
         return listResponse?.messages?.firstOrNull()
     }
 
