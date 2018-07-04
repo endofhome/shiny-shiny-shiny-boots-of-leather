@@ -6,6 +6,7 @@ import datastore.HttpSimpleDropboxClient
 import datastore.SimpleDropboxClient
 import datastore.WriteState.Failure
 import datastore.WriteState.Success
+import gmail.AuthorisedGmailProvider
 import gmail.Gmailer
 import gmail.GmailerState
 import gmail.HttpGmailer
@@ -21,7 +22,7 @@ import javax.mail.Message.RecipientType
 import javax.mail.internet.InternetAddress
 
 fun main(args: Array<String>) {
-    val gmail = gmail.AuthorisedGmailProvider(4000).gmail()
+    val gmail = AuthorisedGmailProvider(4000, GmailBot.appName).gmail()
     val gmailer = HttpGmailer(gmail)
     val dropboxAccessToken = File("credentials/access_token").readText()
     val dropboxClient = HttpSimpleDropboxClient(GmailBot.appName, dropboxAccessToken)
