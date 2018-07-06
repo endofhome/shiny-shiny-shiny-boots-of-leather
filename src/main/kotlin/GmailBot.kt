@@ -82,8 +82,8 @@ class GmailBot(private val gmailer: Gmailer, private val dropboxClient: SimpleDr
         val lastEmailSent = applicationState.lastEmailSent
         val state = when {
             lastEmailSent > now                                                            -> State.INVALID_STATE_IN_FUTURE
-            lastEmailSent.yearMonth() == now.yearMonth()                                   -> State.AN_EMAIL_ALREADY_SENT_THIS_MONTH
             emailBytes != null && thisExactEmailAlreadySent(emailBytes, applicationState)  -> State.THIS_EMAIL_ALREADY_SENT
+            lastEmailSent.yearMonth() == now.yearMonth()                                   -> State.AN_EMAIL_ALREADY_SENT_THIS_MONTH
             lastEmailSent.yearMonth() < now.yearMonth()                                    -> State.NO_EMAIL_SENT_THIS_MONTH
             else                                                                           -> State.UNKNOWN_ERROR
         }
