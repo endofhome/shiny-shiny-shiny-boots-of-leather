@@ -52,9 +52,9 @@ class GmailBot(private val gmailer: Gmailer, private val dropboxClient: SimpleDr
             KOTLIN_GMAILER_TO_ADDRESS,
             KOTLIN_GMAILER_TO_FULLNAME,
             KOTLIN_GMAILER_BCC_ADDRESS,
-            KOTLIN_GMAILER_GMAIL_CLIENT_ID,
             KOTLIN_GMAILER_GMAIL_CLIENT_SECRET,
             KOTLIN_GMAILER_GMAIL_ACCESS_TOKEN,
+            KOTLIN_GMAILER_GMAIL_REFRESH_TOKEN,
             KOTLIN_GMAILER_GMAIL_QUERY,
             KOTLIN_GMAILER_DROPBOX_ACCESS_TOKEN
         }
