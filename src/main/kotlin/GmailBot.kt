@@ -3,6 +3,7 @@ import GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_BCC_ADDRESS
 import GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_FROM_ADDRESS
 import GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_FROM_FULLNAME
 import GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_GMAIL_QUERY
+import GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_RUN_ON_DAYS
 import GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_TO_ADDRESS
 import GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_TO_FULLNAME
 import com.google.api.services.gmail.model.Message
@@ -36,12 +37,12 @@ fun main(args: Array<String>) {
     val gmail = AuthorisedGmailProvider(4000, GmailBot.appName, config).gmail()
     val gmailer = HttpGmailer(gmail)
     val dropboxClient = HttpSimpleDropboxClient(GmailBot.appName, config)
-    val result = GmailBot(gmailer, dropboxClient, config).run(ZonedDateTime.now(), listOf(1))
+    val runOnDays = config[KOTLIN_GMAILER_RUN_ON_DAYS]!!.split(",").map { it.trim().toInt() }
+    val result = GmailBot(gmailer, dropboxClient, config).run(ZonedDateTime.now(), runOnDays)
     println(result)
 }
 
 class GmailBot(private val gmailer: Gmailer, private val dropboxClient: SimpleDropboxClient, private val config: Configuration) {
-
 
     companion object {
         const val appName = "kotlin-gmailer-bot"
@@ -52,6 +53,7 @@ class GmailBot(private val gmailer: Gmailer, private val dropboxClient: SimpleDr
             KOTLIN_GMAILER_GMAIL_REFRESH_TOKEN,
             KOTLIN_GMAILER_DROPBOX_ACCESS_TOKEN,
             KOTLIN_GMAILER_GMAIL_QUERY,
+            KOTLIN_GMAILER_RUN_ON_DAYS,
             KOTLIN_GMAILER_FROM_ADDRESS,
             KOTLIN_GMAILER_FROM_FULLNAME,
             KOTLIN_GMAILER_TO_ADDRESS,
