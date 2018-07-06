@@ -13,6 +13,7 @@ group 'uk.co.endofhome'
 version '1.0-SNAPSHOT'
 
 apply plugin: 'kotlin'
+apply plugin: 'application'
 
 repositories {
     mavenCentral()
