@@ -97,8 +97,12 @@ class GmailBot(private val gmailer: Gmailer, private val dropboxClient: SimpleDr
         }
     }
 
-    private fun thisExactEmailAlreadySent(emailBytes: ByteArray, applicationState: GmailerState) =
-            emailBytes.contentEquals(applicationState.emailContents.toByteArray())
+    private fun thisExactEmailAlreadySent(emailBytes: ByteArray, applicationState: GmailerState): Boolean {
+        val separatorBetweenHeaderAndMainContent = "________________________________"
+        val newEmailContents = String(emailBytes).substringAfter(separatorBetweenHeaderAndMainContent)
+        val previousEmailContents = applicationState.emailContents.substringAfter(separatorBetweenHeaderAndMainContent)
+        return newEmailContents.contentEquals(previousEmailContents)
+    }
 
     private fun tryToSendEmail(datastore: Datastore<GmailerState>, rawMessageToSend: ByteArray?): String {
         val fromEmailAddress = config[KOTLIN_GMAILER_FROM_ADDRESS]!!

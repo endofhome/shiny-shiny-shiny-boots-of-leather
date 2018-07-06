@@ -74,16 +74,26 @@ class GmailerBotAcceptanceTest {
     @Test
     fun `Email isn't sent if the exact same email contents have already been sent`() {
         val state =
-                """
+          """
           |{
           |  "lastEmailSent": "${time.minusMonths(1)}",
-          |  "emailContents": "Already sent this one"
+          |  "emailContents": "
+          |     From: Bob
+          |     To: Jim
+          |     ________________________________
+          |     Already sent this one"
           |}
           |""".trimMargin()
         val stateFile = FileLike("/gmailer_state.json", state)
 
         val dropboxClient = StubDropboxClient(listOf(stateFile))
-        val emails = listOf(Message().setRaw("Already sent this one"))
+        val emails = listOf(Message().setRaw(
+          """
+          |     From: Jim
+          |     To: Bob
+          |     ________________________________
+          |     Already sent this one
+          """.trimMargin()))
         val jobResult = GmailBot(StubGmailer(emails), dropboxClient, config).run(time, listOf(1))
         assertThat(jobResult, equalTo("Exiting as this exact email has already been sent"))
     }

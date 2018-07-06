@@ -1,5 +1,6 @@
 package datastore
 
+import com.fasterxml.jackson.core.JsonParser.Feature.ALLOW_UNQUOTED_CONTROL_CHARS
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
@@ -13,6 +14,7 @@ interface Datastore<T : ApplicationState> {
 class DropboxDatastore<T : ApplicationState>(private val dropboxClient: SimpleDropboxClient, private val appStateMetadata: FlatFileApplicationStateMetadata<T>)  : Datastore<T> {
     private val objectMapper = ObjectMapper().registerKotlinModule()
                                              .registerModule(JavaTimeModule())
+                                             .configure(ALLOW_UNQUOTED_CONTROL_CHARS, true)
 
     override fun currentApplicationState(): T {
         val appStateFileContents = dropboxClient.readFile(appStateMetadata.filename)
