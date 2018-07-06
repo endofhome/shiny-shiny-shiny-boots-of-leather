@@ -44,23 +44,23 @@ fun main(args: Array<String>) {
 
 class GmailBot(private val gmailer: Gmailer, private val dropboxClient: SimpleDropboxClient, private val config: Configuration) {
 
-    companion object {
-        const val appName = "kotlin-gmailer-bot"
+        companion object {
+            const val appName = "kotlin-gmailer-bot"
 
-        enum class RequiredConfig {
-            KOTLIN_GMAILER_GMAIL_CLIENT_SECRET,
-            KOTLIN_GMAILER_GMAIL_ACCESS_TOKEN,
-            KOTLIN_GMAILER_GMAIL_REFRESH_TOKEN,
-            KOTLIN_GMAILER_DROPBOX_ACCESS_TOKEN,
-            KOTLIN_GMAILER_GMAIL_QUERY,
-            KOTLIN_GMAILER_RUN_ON_DAYS,
-            KOTLIN_GMAILER_FROM_ADDRESS,
-            KOTLIN_GMAILER_FROM_FULLNAME,
-            KOTLIN_GMAILER_TO_ADDRESS,
-            KOTLIN_GMAILER_TO_FULLNAME,
-            KOTLIN_GMAILER_BCC_ADDRESS
+            enum class RequiredConfig {
+                KOTLIN_GMAILER_GMAIL_CLIENT_SECRET,
+                KOTLIN_GMAILER_GMAIL_ACCESS_TOKEN,
+                KOTLIN_GMAILER_GMAIL_REFRESH_TOKEN,
+                KOTLIN_GMAILER_DROPBOX_ACCESS_TOKEN,
+                KOTLIN_GMAILER_GMAIL_QUERY,
+                KOTLIN_GMAILER_RUN_ON_DAYS,
+                KOTLIN_GMAILER_FROM_ADDRESS,
+                KOTLIN_GMAILER_FROM_FULLNAME,
+                KOTLIN_GMAILER_TO_ADDRESS,
+                KOTLIN_GMAILER_TO_FULLNAME,
+                KOTLIN_GMAILER_BCC_ADDRESS
+            }
         }
-    }
 
     fun run(now: ZonedDateTime, daysOfMonthToRun: List<Int>): String {
         val gmailQuery = config[KOTLIN_GMAILER_GMAIL_QUERY]!!
