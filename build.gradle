@@ -18,6 +18,8 @@ repositories {
     mavenCentral()
 }
 
+task stage(dependsOn: ['installDist'])
+
 dependencies {
     def jackson_version = '2.9.2'
 
