@@ -6,21 +6,43 @@ import java.nio.file.Path
 
 typealias Configuration = Map<RequiredConfig, String>
 
+enum class ConfigMethod(val tryToGetConfig: (RequiredConfig, Path?) -> String?) {
+    FileStorage(getFromFile),
+    EnvironmentVariables(getFromEnvVar)
+}
+
+val getFromFile = fun (requiredConfig: RequiredConfig, configFileDir: Path?): String? = try {
+    File(configFileDir.toString() + File.separator + requiredConfig.name.toLowerCase()).readText()
+} catch (e: Exception) {
+    null
+}
+
+val getFromEnvVar = fun (requiredConfig: RequiredConfig, _: Path?): String? = try {
+    System.getenv(requiredConfig.name)
+} catch (e: Exception) {
+    null
+}
+
 object Configurator {
     operator fun invoke(requiredConfig: List<RequiredConfig>, configFileDir: Path?): Configuration {
-        val foundConfig = requiredConfig.map {
-            if (configFileDir != null) {
-                try {
-                    val text = File(configFileDir.toString() + File.separator + it.name.toLowerCase()).readText()
-                    return@map it to text
-                } catch (e: Exception) {}
+
+        val foundConfig = requiredConfig.map { required ->
+            fun lookForConfig(tried: List<ConfigMethod> = emptyList()): Pair<RequiredConfig, String?> {
+                val methodToTry: ConfigMethod? = ConfigMethod.values().toList().find { tried.contains(it).not() }
+
+                return when {
+                    methodToTry != null -> {
+                        val config = methodToTry.tryToGetConfig(required, configFileDir)
+                        when {
+                            config != null -> required to config
+                            else -> lookForConfig(tried.plus(methodToTry))
+                        }
+                    }
+                    else -> required to null
+                }
             }
 
-            try {
-                return@map it to System.getenv(it.name)
-            } catch (e: Exception) {}
-
-            return@map it to null
+            lookForConfig()
         }.toMap()
 
         return if (foundConfig.containsValue(null)) {
