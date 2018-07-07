@@ -7,11 +7,10 @@ import java.nio.file.Path
 enum class ConfigMethod(val tryToGetConfig: (RequiredConfig, Path?) -> String?) {
     FileStorage(getFromFile),
     EnvironmentVariables(getFromEnvVar)
-
 }
 
-val getFromFile = fun (requiredConfig: RequiredConfig, configFileDir: Path?): String? = try {
-    File(configFileDir.toString() + File.separator + requiredConfig.name.toLowerCase()).readText()
+val getFromFile = fun (requiredConfig: RequiredConfig, configDir: Path?): String? = try {
+    File(configDir.toString() + File.separator + requiredConfig.name.toLowerCase()).readText()
 } catch (e: Exception) {
     null
 }
@@ -23,7 +22,7 @@ val getFromEnvVar = fun (requiredConfig: RequiredConfig, _: Path?): String? = tr
 }
 object Configurator {
 
-    operator fun invoke(requiredConfig: List<RequiredConfig>, configFileDir: Path?): Configuration {
+    operator fun invoke(requiredConfig: List<RequiredConfig>, configDir: Path?): Configuration {
 
         val foundConfig = requiredConfig.map { required ->
             fun lookForConfig(tried: List<ConfigMethod> = emptyList()): Pair<RequiredConfig, String?> {
@@ -31,7 +30,7 @@ object Configurator {
 
                 return when {
                     methodToTry != null -> {
-                        val config = methodToTry.tryToGetConfig(required, configFileDir)
+                        val config = methodToTry.tryToGetConfig(required, configDir)
                         when {
                             config != null -> required to config
                             else -> lookForConfig(tried.plus(methodToTry))
@@ -53,7 +52,7 @@ object Configurator {
                                 "but not found."
                 )
             }
-            else -> foundConfig.filterNotNull()
+            else -> Configuration(foundConfig.filterNotNull(), configDir)
         }
     }
     private fun pluralise(missingConfig: List<RequiredConfig>): String = when {

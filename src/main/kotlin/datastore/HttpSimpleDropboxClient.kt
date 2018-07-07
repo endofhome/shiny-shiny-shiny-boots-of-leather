@@ -7,7 +7,6 @@ import com.dropbox.core.DbxRequestConfig
 import com.dropbox.core.v2.DbxClientV2
 import com.dropbox.core.v2.files.WriteMode
 import config.Configuration
-import config.fetch
 import datastore.WriteState.Failure
 import datastore.WriteState.Success
 import java.io.ByteArrayInputStream

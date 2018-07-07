@@ -5,6 +5,7 @@ import GmailBot.Companion.RequiredConfig
 import com.google.api.services.gmail.model.Message
 import com.natpryce.hamkrest.assertion.assertThat
 import com.natpryce.hamkrest.equalTo
+import config.Configuration
 import datastore.SimpleDropboxClient
 import datastore.WriteState
 import gmail.Gmailer
@@ -15,7 +16,7 @@ import java.time.ZonedDateTime
 class GmailerBotAcceptanceTest {
 
     private val time = ZonedDateTime.of(2018, 6, 1, 0, 0, 0, 0, UTC)
-    private val config = RequiredConfig.values().toList().associate { it to "x@y" }
+    private val config = Configuration(RequiredConfig.values().toList().associate { it to "x@y" }, null)
 
     @Test
     fun `Happy path`() {

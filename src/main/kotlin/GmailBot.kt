@@ -9,7 +9,6 @@ import GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_TO_FULLNAME
 import com.google.api.services.gmail.model.Message
 import config.Configuration
 import config.Configurator
-import config.fetch
 import datastore.Datastore
 import datastore.DropboxDatastore
 import datastore.FlatFileApplicationStateMetadata
