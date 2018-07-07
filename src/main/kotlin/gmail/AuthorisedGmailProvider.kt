@@ -16,6 +16,7 @@ import com.google.api.client.util.store.FileDataStoreFactory
 import com.google.api.services.gmail.Gmail
 import com.google.api.services.gmail.GmailScopes
 import config.Configuration
+import config.fetch
 import java.io.File
 
 class AuthorisedGmailProvider(port: Int, private val appName: String, private val config: Configuration) {
@@ -36,20 +37,20 @@ class AuthorisedGmailProvider(port: Int, private val appName: String, private va
     }
 
     private fun credentialFromConfig(): Credential {
-        val clientSecret = config[KOTLIN_GMAILER_GMAIL_CLIENT_SECRET]!!
+        val clientSecret = config.fetch(KOTLIN_GMAILER_GMAIL_CLIENT_SECRET)
         val clientSecrets: GoogleClientSecrets = GoogleClientSecrets.load(jsonFactory, clientSecret.reader())
         val credential = GoogleCredential.Builder()
                                                          .setTransport(httpTransport)
                                                          .setJsonFactory(jsonFactory)
                                                          .setClientSecrets(clientSecrets)
                                                          .build()
-        credential.accessToken = config[KOTLIN_GMAILER_GMAIL_ACCESS_TOKEN]!!
-        credential.refreshToken = config[KOTLIN_GMAILER_GMAIL_REFRESH_TOKEN]!!
+        credential.accessToken = config.fetch(KOTLIN_GMAILER_GMAIL_ACCESS_TOKEN)
+        credential.refreshToken = config.fetch(KOTLIN_GMAILER_GMAIL_REFRESH_TOKEN)
         return credential
     }
 
     private fun newCredentials(httpTransport: NetHttpTransport, port: Int): Credential {
-        val clientSecret = config[KOTLIN_GMAILER_GMAIL_CLIENT_SECRET]!!
+        val clientSecret = config.fetch(KOTLIN_GMAILER_GMAIL_CLIENT_SECRET)
         val credentialsFolder = File("credentials")
         val scopes = listOf(GmailScopes.MAIL_GOOGLE_COM)
         val clientSecrets: GoogleClientSecrets = GoogleClientSecrets.load(jsonFactory, clientSecret.reader())

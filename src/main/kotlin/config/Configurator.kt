@@ -4,11 +4,10 @@ import GmailBot.Companion.RequiredConfig
 import java.io.File
 import java.nio.file.Path
 
-typealias Configuration = Map<RequiredConfig, String>
-
 enum class ConfigMethod(val tryToGetConfig: (RequiredConfig, Path?) -> String?) {
     FileStorage(getFromFile),
     EnvironmentVariables(getFromEnvVar)
+
 }
 
 val getFromFile = fun (requiredConfig: RequiredConfig, configFileDir: Path?): String? = try {
@@ -22,8 +21,8 @@ val getFromEnvVar = fun (requiredConfig: RequiredConfig, _: Path?): String? = tr
 } catch (e: Exception) {
     null
 }
-
 object Configurator {
+
     operator fun invoke(requiredConfig: List<RequiredConfig>, configFileDir: Path?): Configuration {
 
         val foundConfig = requiredConfig.map { required ->
@@ -50,21 +49,19 @@ object Configurator {
                 val missingConfig = foundConfig.filter { it.value == null }.map { it.key }
                 throw ConfigurationException(
                         "Config value${pluralise(missingConfig)} required for " +
-                                "${missingConfig.map { it.name }.joinToString(", ")} " +
-                                "but not found"
+                                "${missingConfig.joinToString(", ") { it.name }} " +
+                                "but not found."
                 )
             }
             else -> foundConfig.filterNotNull()
         }
     }
-
     private fun pluralise(missingConfig: List<RequiredConfig>): String = when {
         missingConfig.size > 1 -> "s"
         else                   -> ""
     }
-}
 
-class ConfigurationException(override val message: String) : RuntimeException()
+}
 
 @Suppress("UNCHECKED_CAST")
 fun <K, V> Map<K, V?>.filterNotNull() = this.filterValues { it != null } as Map<K, V>
