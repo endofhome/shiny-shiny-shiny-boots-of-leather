@@ -47,7 +47,7 @@ object Configurator {
 
         return if (foundConfig.containsValue(null)) {
             val missingConfig = foundConfig.filter { it.value == null }.map { it.key }
-            throw RuntimeException(
+            throw ConfigurationException(
                     "Config value${pluralise(missingConfig)} required for " +
                     "${missingConfig.map { it.name }.joinToString(", ")} " +
                     "but not found"
@@ -64,6 +64,8 @@ object Configurator {
         }
     }
 }
+
+class ConfigurationException(override val message: String) : RuntimeException()
 
 @Suppress("UNCHECKED_CAST")
 fun <K, V> Map<K, V?>.filterNotNull() = this.filterValues { it != null } as Map<K, V>
