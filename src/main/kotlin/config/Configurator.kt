@@ -43,24 +43,6 @@ object Configurator {
             lookForConfig()
         }.toMap()
 
-        return when {
-            foundConfig.containsValue(null) -> {
-                val missingConfig = foundConfig.filter { it.value == null }.map { it.key }
-                throw ConfigurationException(
-                        "Config value${pluralise(missingConfig)} required for " +
-                                "${missingConfig.joinToString(", ") { it.name }} " +
-                                "but not found."
-                )
-            }
-            else -> Configuration(foundConfig.filterNotNull(), configDir)
-        }
+        return Configuration(foundConfig, configDir)
     }
-    private fun pluralise(missingConfig: List<RequiredConfig>): String = when {
-        missingConfig.size > 1 -> "s"
-        else                   -> ""
-    }
-
 }
-
-@Suppress("UNCHECKED_CAST")
-fun <K, V> Map<K, V?>.filterNotNull() = this.filterValues { it != null } as Map<K, V>

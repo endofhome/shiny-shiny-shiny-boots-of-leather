@@ -19,7 +19,7 @@ interface SimpleDropboxClient {
 
 class HttpSimpleDropboxClient(identifier: String, config: Configuration) : SimpleDropboxClient {
     private val requestConfig: DbxRequestConfig = DbxRequestConfig.newBuilder(identifier).build()
-    private val client: DbxClientV2 = DbxClientV2(requestConfig, config.fetch(KOTLIN_GMAILER_DROPBOX_ACCESS_TOKEN))
+    private val client: DbxClientV2 = DbxClientV2(requestConfig, config.get(KOTLIN_GMAILER_DROPBOX_ACCESS_TOKEN))
 
     override fun readFile(filename: String): String {
         return client.files().download(filename).inputStream.reader().readText()
