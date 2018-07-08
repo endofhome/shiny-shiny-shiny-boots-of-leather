@@ -199,12 +199,12 @@ open class StubDropboxClient(initialFiles: List<FileLike>) : SimpleDropboxClient
 
     override fun writeFile(fileContents: String, filename: String): WriteState {
         files += FileLike(filename, fileContents)
-        return WriteState.Success()
+        return WriteState.WriteSuccess()
     }
 }
 
 class StubDropboxClientThatCannotStore(initialFiles: List<FileLike>) : StubDropboxClient(initialFiles) {
-    override fun writeFile(fileContents: String, filename: String): WriteState = WriteState.Failure()
+    override fun writeFile(fileContents: String, filename: String): WriteState = WriteState.WriteFailure()
 }
 
 data class FileLike(val name: String, val contents: String)

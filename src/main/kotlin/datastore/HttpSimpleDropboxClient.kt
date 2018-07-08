@@ -7,8 +7,8 @@ import com.dropbox.core.DbxRequestConfig
 import com.dropbox.core.v2.DbxClientV2
 import com.dropbox.core.v2.files.WriteMode
 import config.Configuration
-import datastore.WriteState.Failure
-import datastore.WriteState.Success
+import datastore.WriteState.WriteFailure
+import datastore.WriteState.WriteSuccess
 import java.io.ByteArrayInputStream
 import java.io.IOException
 
@@ -32,12 +32,12 @@ class HttpSimpleDropboxClient(identifier: String, config: Configuration) : Simpl
                         .withMode(WriteMode.OVERWRITE)
                         .uploadAndFinish(inputStream)
             }
-            Success()
+            WriteSuccess()
         } catch (e: Exception) {
             when (e) {
                 is DbxApiException,
                 is DbxException,
-                is IOException      -> Failure()
+                is IOException      -> WriteFailure()
                 else                -> throw e
             }
         }
@@ -45,7 +45,7 @@ class HttpSimpleDropboxClient(identifier: String, config: Configuration) : Simpl
 }
 
 sealed class WriteState {
-    class Success : WriteState()
-    class Failure : WriteState()
+    class WriteSuccess : WriteState()
+    class WriteFailure : WriteState()
 }
 

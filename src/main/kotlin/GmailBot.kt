@@ -6,6 +6,8 @@ import GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_GMAIL_QUERY
 import GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_RUN_ON_DAYS
 import GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_TO_ADDRESS
 import GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_TO_FULLNAME
+import Result.Failure
+import Result.Success
 import com.google.api.services.gmail.model.Message
 import config.Configuration
 import config.Configurator
@@ -14,8 +16,8 @@ import datastore.DropboxDatastore
 import datastore.FlatFileApplicationStateMetadata
 import datastore.HttpSimpleDropboxClient
 import datastore.SimpleDropboxClient
-import datastore.WriteState.Failure
-import datastore.WriteState.Success
+import datastore.WriteState.WriteFailure
+import datastore.WriteState.WriteSuccess
 import gmail.AuthorisedGmailProvider
 import gmail.Gmailer
 import gmail.GmailerState
@@ -63,17 +65,19 @@ class GmailBot(private val gmailer: Gmailer, private val dropboxClient: SimpleDr
         }
 
     fun run(now: ZonedDateTime, daysOfMonthToRun: List<Int>): String {
-        val gmailQuery = config.get(KOTLIN_GMAILER_GMAIL_QUERY)
+
+        fun List<Int>.includes(dayOfMonth: Int): Result<NoNeedToRunAtThisTime, ZonedDateTime> = when {
+            this.contains(dayOfMonth) -> Success(now)
+            else                      -> Failure(NoNeedToRunAtThisTime(dayOfMonth, daysOfMonthToRun))
+        }
+
+        val shouldRunNow = daysOfMonthToRun.includes(now.dayOfMonth)
+        if (shouldRunNow is Failure) return shouldRunNow.reason.message
 
         val appStateMetadata = FlatFileApplicationStateMetadata("/gmailer_state.json", GmailerState::class.java)
         val datastore: Datastore<GmailerState> = DropboxDatastore(dropboxClient, appStateMetadata)
-        val dayOfMonth = now.dayOfMonth
-
-        if (daysOfMonthToRun.contains(dayOfMonth).not()) {
-            return("No need to run: day of month is: $dayOfMonth, only running on day ${daysOfMonthToRun.joinToString(", ")} of each month")
-        }
-
         val applicationState = datastore.currentApplicationState()
+        val gmailQuery = config.get(KOTLIN_GMAILER_GMAIL_QUERY)
         val searchResult: Message? = gmailer.lastEmailForQuery(gmailQuery)
         val emailBytes = searchResult?.let {
              gmailer.rawContentOf(searchResult)
@@ -134,8 +138,8 @@ class GmailBot(private val gmailer: Gmailer, private val dropboxClient: SimpleDr
 
             val wasStateUpdated = dropboxState?.let {
                 when (it) {
-                    is Success -> "Current state has been stored in Dropbox"
-                    is Failure -> "Error - could not store state in Dropbox"
+                    is WriteSuccess -> "Current state has been stored in Dropbox"
+                    is WriteFailure -> "Error - could not store state in Dropbox"
                 }
             } ?: ""
 
@@ -155,4 +159,21 @@ enum class State {
     THIS_EMAIL_ALREADY_SENT,
     INVALID_STATE_IN_FUTURE,
     UNKNOWN_ERROR
+}
+
+
+sealed class Result<out E, out T> {
+    data class Success<T>(val value: T) : Result<Nothing, T>()
+    data class Failure<E>(val reason: E) : Result<E, Nothing>()
+}
+
+fun <E, T> Result<E, T>.flatMap(f: (T) -> Result<E, T>): Result<E, T> {
+    return when (this) {
+        is Success<T> -> f(value)
+        is Failure<E> -> this
+    }
+}
+
+class NoNeedToRunAtThisTime(dayOfMonth: Int, daysOfMonthToRun: List<Int>) {
+    val message = "No need to run: day of month is: $dayOfMonth, only running on day ${daysOfMonthToRun.joinToString(", ")} of each month"
 }
