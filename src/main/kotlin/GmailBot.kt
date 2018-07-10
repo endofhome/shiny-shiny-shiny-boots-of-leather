@@ -76,7 +76,12 @@ class GmailBot(private val gmailer: Gmailer, private val dropboxClient: SimpleDr
 
         val appStateMetadata = FlatFileApplicationStateMetadata("/gmailer_state.json", GmailerState::class.java)
         val datastore: Datastore<GmailerState> = DropboxDatastore(dropboxClient, appStateMetadata)
-        val applicationState = datastore.currentApplicationState()
+        val appStateResult = datastore.currentApplicationState()
+        val applicationState = when (appStateResult) {
+            is Success -> appStateResult.value
+            is Failure -> return appStateResult.reason.message
+        }
+
         val gmailQuery = config.get(KOTLIN_GMAILER_GMAIL_QUERY)
         val searchResult: Message? = gmailer.lastEmailForQuery(gmailQuery)
         val emailBytes = searchResult?.let {
@@ -163,16 +168,29 @@ enum class State {
 
 
 sealed class Result<out E, out T> {
-    data class Success<T>(val value: T) : Result<Nothing, T>()
-    data class Failure<E>(val reason: E) : Result<E, Nothing>()
+    data class Success<out T>(val value: T) : Result<Nothing, T>()
+    data class Failure<out E>(val reason: E) : Result<E, Nothing>()
 }
 
-fun <E, T> Result<E, T>.flatMap(f: (T) -> Result<E, T>): Result<E, T> {
-    return when (this) {
+fun <E, T, U> Result<E, T>.map(f: (T) -> U): Result<E, U> =
+        when (this) {
+            is Success<T> -> Success(f(value))
+            is Failure<E> -> this
+        }
+
+fun <E, T, U> Result<E, T>.flatMap(f: (T) -> Result<E, U>): Result<E, U> =
+    when (this) {
         is Success<T> -> f(value)
         is Failure<E> -> this
     }
-}
+
+fun <E, F, T> Result<E, T>.fold(failure: (E) -> F, success: (T) -> F): F = this.map(success).orElse(failure)
+
+fun <E, T> Result<E, T>.orElse(f: (E) -> T): T =
+        when (this) {
+            is Success<T> -> this.value
+            is Failure<E> -> f(this.reason)
+        }
 
 class NoNeedToRunAtThisTime(dayOfMonth: Int, daysOfMonthToRun: List<Int>) {
     val message = "No need to run: day of month is: $dayOfMonth, only running on day ${daysOfMonthToRun.joinToString(", ")} of each month"

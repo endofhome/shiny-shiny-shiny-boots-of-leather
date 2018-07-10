@@ -2,10 +2,14 @@ package acceptance
 
 import GmailBot
 import GmailBot.Companion.RequiredConfig
+import Result
+import Result.Failure
+import Result.Success
 import com.google.api.services.gmail.model.Message
 import com.natpryce.hamkrest.assertion.assertThat
 import com.natpryce.hamkrest.equalTo
 import config.Configuration
+import datastore.ErrorDownloadingFileFromDropbox
 import datastore.SimpleDropboxClient
 import datastore.WriteState
 import gmail.Gmailer
@@ -167,6 +171,14 @@ class GmailerBotAcceptanceTest {
         val jobResult = GmailBot(StubGmailerThatCannotRetrieveRawContent(emails), dropboxClient, config).run(time, listOf(1))
         assertThat(jobResult, equalTo("Error - could not get raw message content for email"))
     }
+
+    @Test
+    fun `Error message is provided when file does not exist in Dropbox`() {
+        val dropboxClient = StubDropboxClient(emptyList())
+        val emails = listOf(Message().setRaw("New email data"))
+        val jobResult = GmailBot(StubGmailerThatCannotRetrieveRawContent(emails), dropboxClient, config).run(time, listOf(1))
+        assertThat(jobResult, equalTo("Error downloading file /gmailer_state.json from Dropbox"))
+    }
 }
 
 open class StubGmailer(private val emails: List<Message>) : Gmailer {
@@ -192,9 +204,11 @@ class StubGmailerThatCannotRetrieveRawContent(emails: List<Message>) : StubGmail
 open class StubDropboxClient(initialFiles: List<FileLike>) : SimpleDropboxClient {
     private var files = initialFiles
 
-    override fun readFile(filename: String): String {
+    override fun readFile(filename: String): Result<ErrorDownloadingFileFromDropbox, String> {
         val fileMaybe = files.find { it.name == filename }
-        return fileMaybe?.contents ?: ""
+        return fileMaybe?.let { fileLike ->
+            Success(fileLike.contents)
+        } ?: Failure(ErrorDownloadingFileFromDropbox(filename))
     }
 
     override fun writeFile(fileContents: String, filename: String): WriteState {

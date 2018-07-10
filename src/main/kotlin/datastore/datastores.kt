@@ -1,13 +1,17 @@
 package datastore
 
+import Result
+import Result.Failure
+import Result.Success
 import com.fasterxml.jackson.core.JsonParser.Feature.ALLOW_UNQUOTED_CONTROL_CHARS
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
+import fold
 import gmail.ApplicationState
 
 interface Datastore<T : ApplicationState> {
-    fun currentApplicationState(): T
+    fun currentApplicationState(): Result<ErrorRetrievingApplicationState, T>
     fun store(state: T): WriteState
 }
 
@@ -16,9 +20,12 @@ class DropboxDatastore<T : ApplicationState>(private val dropboxClient: SimpleDr
                                              .registerModule(JavaTimeModule())
                                              .configure(ALLOW_UNQUOTED_CONTROL_CHARS, true)
 
-    override fun currentApplicationState(): T {
+    override fun currentApplicationState(): Result<ErrorDownloadingFileFromDropbox, T> {
         val appStateFileContents = dropboxClient.readFile(appStateMetadata.filename)
-        return objectMapper.readValue(appStateFileContents, appStateMetadata.stateClass)
+        return appStateFileContents.fold(
+                success = { Success(objectMapper.readValue(it, appStateMetadata.stateClass)) },
+                failure = { Failure(it) }
+        )
     }
 
     override fun store(state: T): WriteState {
@@ -28,3 +35,4 @@ class DropboxDatastore<T : ApplicationState>(private val dropboxClient: SimpleDr
 }
 
 data class FlatFileApplicationStateMetadata<T>(val filename: String, val stateClass: Class<T>)
+interface ErrorRetrievingApplicationState { val message: String }

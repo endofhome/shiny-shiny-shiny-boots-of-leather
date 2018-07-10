@@ -1,5 +1,7 @@
 package datastore
 
+import Result
+import Result.Success
 import acceptance.FileLike
 import acceptance.StubDropboxClient
 import com.natpryce.hamkrest.assertion.assertThat
@@ -20,7 +22,8 @@ class DropboxDatastoreTest {
 
         dropboxDatastore.store(testAppState)
 
-        assertThat(dropboxDatastore.currentApplicationState(), equalTo(testAppState))
+        assertThat(dropboxDatastore.currentApplicationState().expectSuccess(), equalTo(testAppState))
     }
-
 }
+
+fun <E, T> Result<E, T>.expectSuccess() = (this as Success).value
