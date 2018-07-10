@@ -31,12 +31,11 @@ class HttpSimpleDropboxClient(identifier: String, config: Configuration) : Simpl
     private val client: DbxClientV2 = DbxClientV2(requestConfig, config.get(KOTLIN_GMAILER_DROPBOX_ACCESS_TOKEN))
 
     override fun readFile(filename: String): Result<ErrorDownloadingFileFromDropbox, String> {
-        val fileDownloaderResult: Result<ErrorDownloadingFileFromDropbox, DbxDownloader<FileMetadata>> = downloaderFor(filename)
-        return fileDownloaderResult.flatMap { it.inputStream() }
-                                   .fold (
-                                      failure = { Failure(it) },
-                                      success = { Success(it.reader().readText()) }
-                                   )
+        return downloaderFor(filename).flatMap { it.inputStream() }
+                                      .fold (
+                                         failure = { Failure(it) },
+                                         success = { Success(it.reader().readText()) }
+                                      )
     }
 
     override fun writeFile(fileContents: String, filename: String): WriteState {
