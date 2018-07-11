@@ -64,51 +64,6 @@ class GmailBot(private val gmailer: Gmailer, private val dropboxClient: SimpleDr
         }
 
     fun run(now: ZonedDateTime, daysOfMonthToRun: List<Int>): String {
-
-        fun List<Int>.includes(dayOfMonth: Int): Result<NoNeedToRunAtThisTime, ZonedDateTime> = when {
-            this.contains(dayOfMonth) -> Success(now)
-            else -> Failure(NoNeedToRunAtThisTime(dayOfMonth, daysOfMonthToRun))
-        }
-
-        fun tryToSendEmail(datastore: Datastore<GmailerState>, rawMessageToSend: ByteArray): String {
-            val fromEmailAddress = config.get(KOTLIN_GMAILER_FROM_ADDRESS)
-            val fromFullName = config.get(KOTLIN_GMAILER_FROM_FULLNAME)
-            val toEmailAddress = config.get(KOTLIN_GMAILER_TO_ADDRESS)
-            val toFullName = config.get(KOTLIN_GMAILER_TO_FULLNAME)
-            val bccEmailAddress = config.get(KOTLIN_GMAILER_BCC_ADDRESS)
-
-
-            val clonedMessage = gmailer.newMessageFrom(rawMessageToSend)
-            val clonedMessageWithNewHeader = clonedMessage?.run {
-                replaceSender(InternetAddress(fromEmailAddress, fromFullName))
-                replaceRecipient(InternetAddress(toEmailAddress, toFullName), RecipientType.TO)
-                replaceRecipient(InternetAddress(bccEmailAddress), RecipientType.BCC)
-                encode()
-            }
-
-            val gmailResponse = clonedMessageWithNewHeader?.let { gmailer.send(clonedMessageWithNewHeader) }
-
-            val dropboxState = gmailResponse?.let {
-                val emailContents = clonedMessageWithNewHeader.decodeRaw()?.let { String(it) }
-                val newState = emailContents?.let { GmailerState(ZonedDateTime.now(), emailContents) }
-                newState?.let { datastore.store(newState) }
-            }
-
-            val wasEmailSent = gmailResponse?.let {
-                "New email has been sent"
-            } ?: "Error - could not send email/s"
-
-            val wasStateUpdated = dropboxState?.let {
-                when (it) {
-                    is WriteSuccess -> "Current state has been stored in Dropbox"
-                    is WriteFailure -> "Error - could not store state in Dropbox"
-                }
-            } ?: ""
-
-            val resultMessages = listOf(wasEmailSent, wasStateUpdated).filter { it.isNotBlank() }
-            return resultMessages.joinToString("\n")
-        }
-
         val appStateMetadata = FlatFileApplicationStateMetadata("/gmailer_state.json", GmailerState::class.java)
         val datastore: Datastore<GmailerState> = DropboxDatastore(dropboxClient, appStateMetadata)
         val shouldRunNow = daysOfMonthToRun.includes(now.dayOfMonth)
@@ -145,6 +100,50 @@ class GmailBot(private val gmailer: Gmailer, private val dropboxClient: SimpleDr
             lastEmailSent.yearMonth() < now.yearMonth()             -> Success(emailBytes)
             else                                                    -> Failure(UnknownError())
         }
+    }
+
+    private fun tryToSendEmail(datastore: Datastore<GmailerState>, rawMessageToSend: ByteArray): String {
+        val fromEmailAddress = config.get(KOTLIN_GMAILER_FROM_ADDRESS)
+        val fromFullName = config.get(KOTLIN_GMAILER_FROM_FULLNAME)
+        val toEmailAddress = config.get(KOTLIN_GMAILER_TO_ADDRESS)
+        val toFullName = config.get(KOTLIN_GMAILER_TO_FULLNAME)
+        val bccEmailAddress = config.get(KOTLIN_GMAILER_BCC_ADDRESS)
+
+
+        val clonedMessage = gmailer.newMessageFrom(rawMessageToSend)
+        val clonedMessageWithNewHeader = clonedMessage?.run {
+            replaceSender(InternetAddress(fromEmailAddress, fromFullName))
+            replaceRecipient(InternetAddress(toEmailAddress, toFullName), RecipientType.TO)
+            replaceRecipient(InternetAddress(bccEmailAddress), RecipientType.BCC)
+            encode()
+        }
+
+        val gmailResponse = clonedMessageWithNewHeader?.let { gmailer.send(clonedMessageWithNewHeader) }
+
+        val dropboxState = gmailResponse?.let {
+            val emailContents = clonedMessageWithNewHeader.decodeRaw()?.let { String(it) }
+            val newState = emailContents?.let { GmailerState(ZonedDateTime.now(), emailContents) }
+            newState?.let { datastore.store(newState) }
+        }
+
+        val wasEmailSent = gmailResponse?.let {
+            "New email has been sent"
+        } ?: "Error - could not send email/s"
+
+        val wasStateUpdated = dropboxState?.let {
+            when (it) {
+                is WriteSuccess -> "Current state has been stored in Dropbox"
+                is WriteFailure -> "Error - could not store state in Dropbox"
+            }
+        } ?: ""
+
+        val resultMessages = listOf(wasEmailSent, wasStateUpdated).filter { it.isNotBlank() }
+        return resultMessages.joinToString("\n")
+    }
+
+    private fun List<Int>.includes(dayOfMonth: Int): Result<NoNeedToRunAtThisTime, Int> = when {
+        this.contains(dayOfMonth) -> Success(dayOfMonth)
+        else                      -> Failure(NoNeedToRunAtThisTime(dayOfMonth, this))
     }
 }
 
