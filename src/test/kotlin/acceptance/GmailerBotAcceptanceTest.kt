@@ -184,8 +184,7 @@ class GmailerBotAcceptanceTest {
         val stateFile = FileLike("/gmailer_state.json", state)
 
         val dropboxClient = StubDropboxClient(listOf(stateFile))
-        val emails: List<Message> = emptyList()
-        val jobResult = GmailBot(StubGmailerThatReturnsNoMatches(emails), dropboxClient, config).run(time, listOf(1))
+        val jobResult = GmailBot(StubGmailerThatReturnsNoMatches(emptyList()), dropboxClient, config).run(time, listOf(1))
         assertThat(jobResult, equalTo("No matching results for query: 'x@y'"))
     }
 
