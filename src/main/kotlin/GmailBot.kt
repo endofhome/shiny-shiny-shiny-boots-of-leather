@@ -168,28 +168,28 @@ enum class State {
 
 
 sealed class Result<out E, out T> {
-    data class Success<out T>(val value: T) : Result<Nothing, T>()
-    data class Failure<out E>(val reason: E) : Result<E, Nothing>()
+    data class Success<out S>(val value: S) : Result<Nothing, S>()
+    data class Failure<out F>(val reason: F) : Result<F, Nothing>()
 }
 
-fun <E, T, U> Result<E, T>.map(f: (T) -> U): Result<E, U> =
+fun <F, S, T> Result<F, S>.map(f: (S) -> T): Result<F, T> =
         when (this) {
-            is Success<T> -> Success(f(value))
-            is Failure<E> -> this
+            is Success<S> -> Success(f(value))
+            is Failure<F> -> this
         }
 
-fun <E, T, U> Result<E, T>.flatMap(f: (T) -> Result<E, U>): Result<E, U> =
+fun <F, S, T> Result<F, S>.flatMap(f: (S) -> Result<F, T>): Result<F, T> =
     when (this) {
-        is Success<T> -> f(value)
-        is Failure<E> -> this
+        is Success<S> -> f(value)
+        is Failure<F> -> this
     }
 
-fun <E, F, T> Result<E, T>.fold(failure: (E) -> F, success: (T) -> F): F = this.map(success).orElse(failure)
+fun <F, G, S> Result<F, S>.fold(failure: (F) -> G, success: (S) -> G): G = this.map(success).orFlse(failure)
 
-fun <E, T> Result<E, T>.orElse(f: (E) -> T): T =
+fun <F, S> Result<F, S>.orFlse(f: (F) -> S): S =
         when (this) {
-            is Success<T> -> this.value
-            is Failure<E> -> f(this.reason)
+            is Success<S> -> this.value
+            is Failure<F> -> f(this.reason)
         }
 
 class NoNeedToRunAtThisTime(dayOfMonth: Int, daysOfMonthToRun: List<Int>) {

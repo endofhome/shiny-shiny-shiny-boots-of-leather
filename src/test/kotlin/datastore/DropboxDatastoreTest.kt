@@ -26,4 +26,4 @@ class DropboxDatastoreTest {
     }
 }
 
-fun <E, T> Result<E, T>.expectSuccess() = (this as Success).value
+fun <F, S> Result<F, S>.expectSuccess() = (this as Success).value
