@@ -1,5 +1,6 @@
 package datastore
 
+import Err
 import GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_DROPBOX_ACCESS_TOKEN
 import Result
 import Result.Failure
@@ -85,6 +86,6 @@ sealed class WriteState {
     class WriteFailure : WriteState()
 }
 
-class ErrorDownloadingFileFromDropbox(filename: String? = null) : ErrorRetrievingApplicationState {
+class ErrorDownloadingFileFromDropbox(filename: String? = null) : Err {
     override val message = "Error downloading file ${ filename?.let { "$it " } ?: "" }from Dropbox"
 }

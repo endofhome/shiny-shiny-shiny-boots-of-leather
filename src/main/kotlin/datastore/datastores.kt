@@ -1,5 +1,6 @@
 package datastore
 
+import Err
 import Result
 import Result.Failure
 import Result.Success
@@ -11,7 +12,7 @@ import fold
 import gmail.ApplicationState
 
 interface Datastore<T : ApplicationState> {
-    fun currentApplicationState(): Result<ErrorRetrievingApplicationState, T>
+    fun currentApplicationState(): Result<Err, T>
     fun store(state: T): WriteState
 }
 
@@ -35,4 +36,3 @@ class DropboxDatastore<T : ApplicationState>(private val dropboxClient: SimpleDr
 }
 
 data class FlatFileApplicationStateMetadata<T>(val filename: String, val stateClass: Class<T>)
-interface ErrorRetrievingApplicationState { val message: String }

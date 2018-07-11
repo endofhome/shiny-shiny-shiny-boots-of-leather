@@ -173,6 +173,23 @@ class GmailerBotAcceptanceTest {
     }
 
     @Test
+    fun `Error message is provided when there are no matches for search query`() {
+        val state =
+          """
+          |{
+          |  "lastEmailSent": "${time.minusMonths(1)}",
+          |  "emailContents": "Last month's email data"
+          |}
+          |""".trimMargin()
+        val stateFile = FileLike("/gmailer_state.json", state)
+
+        val dropboxClient = StubDropboxClient(listOf(stateFile))
+        val emails: List<Message> = emptyList()
+        val jobResult = GmailBot(StubGmailerThatReturnsNoMatches(emails), dropboxClient, config).run(time, listOf(1))
+        assertThat(jobResult, equalTo("No matching results for query: 'x@y'"))
+    }
+
+    @Test
     fun `Error message is provided when file does not exist in Dropbox`() {
         val dropboxClient = StubDropboxClient(emptyList())
         val emails = listOf(Message().setRaw("New email data"))
@@ -198,6 +215,10 @@ class StubGmailerThatCannotSend(emails: List<Message>) : StubGmailer(emails) {
 
 class StubGmailerThatCannotRetrieveRawContent(emails: List<Message>) : StubGmailer(emails) {
     override fun rawContentOf(cookedMessage: Message): ByteArray? = null
+}
+
+class StubGmailerThatReturnsNoMatches(emails: List<Message>) : StubGmailer(emails) {
+    override fun lastEmailForQuery(queryString: String): Message? = null
 }
 
 

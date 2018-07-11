@@ -8,7 +8,6 @@ import GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_TO_ADDRESS
 import GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_TO_FULLNAME
 import Result.Failure
 import Result.Success
-import com.google.api.services.gmail.model.Message
 import config.Configuration
 import config.Configurator
 import datastore.Datastore
@@ -68,65 +67,23 @@ class GmailBot(private val gmailer: Gmailer, private val dropboxClient: SimpleDr
 
         fun List<Int>.includes(dayOfMonth: Int): Result<NoNeedToRunAtThisTime, ZonedDateTime> = when {
             this.contains(dayOfMonth) -> Success(now)
-            else                      -> Failure(NoNeedToRunAtThisTime(dayOfMonth, daysOfMonthToRun))
+            else -> Failure(NoNeedToRunAtThisTime(dayOfMonth, daysOfMonthToRun))
         }
 
-        val shouldRunNow = daysOfMonthToRun.includes(now.dayOfMonth)
-        if (shouldRunNow is Failure) return shouldRunNow.reason.message
+        fun tryToSendEmail(datastore: Datastore<GmailerState>, rawMessageToSend: ByteArray): String {
+            val fromEmailAddress = config.get(KOTLIN_GMAILER_FROM_ADDRESS)
+            val fromFullName = config.get(KOTLIN_GMAILER_FROM_FULLNAME)
+            val toEmailAddress = config.get(KOTLIN_GMAILER_TO_ADDRESS)
+            val toFullName = config.get(KOTLIN_GMAILER_TO_FULLNAME)
+            val bccEmailAddress = config.get(KOTLIN_GMAILER_BCC_ADDRESS)
 
-        val appStateMetadata = FlatFileApplicationStateMetadata("/gmailer_state.json", GmailerState::class.java)
-        val datastore: Datastore<GmailerState> = DropboxDatastore(dropboxClient, appStateMetadata)
-        val appStateResult = datastore.currentApplicationState()
-        val applicationState = when (appStateResult) {
-            is Success -> appStateResult.value
-            is Failure -> return appStateResult.reason.message
-        }
 
-        val gmailQuery = config.get(KOTLIN_GMAILER_GMAIL_QUERY)
-        val searchResult: Message? = gmailer.lastEmailForQuery(gmailQuery)
-        val emailBytes = searchResult?.let {
-             gmailer.rawContentOf(searchResult)
-        }
-
-        val lastEmailSent = applicationState.lastEmailSent
-        val state = when {
-            lastEmailSent > now                                                            -> State.INVALID_STATE_IN_FUTURE
-            emailBytes != null && thisExactEmailAlreadySent(emailBytes, applicationState)  -> State.THIS_EMAIL_ALREADY_SENT
-            lastEmailSent.yearMonth() == now.yearMonth()                                   -> State.AN_EMAIL_ALREADY_SENT_THIS_MONTH
-            lastEmailSent.yearMonth() < now.yearMonth()                                    -> State.NO_EMAIL_SENT_THIS_MONTH
-            else                                                                           -> State.UNKNOWN_ERROR
-        }
-
-        return when (state) {
-            State.THIS_EMAIL_ALREADY_SENT          -> "Exiting as this exact email has already been sent"
-            State.AN_EMAIL_ALREADY_SENT_THIS_MONTH -> "Exiting, email has already been sent for ${now.month.getDisplayName(TextStyle.FULL, Locale.getDefault())} ${now.year}"
-            State.UNKNOWN_ERROR                    -> "Exiting due to unknown error"
-            State.INVALID_STATE_IN_FUTURE          -> "Exiting due to invalid state, previous email appears to have been sent in the future"
-            State.NO_EMAIL_SENT_THIS_MONTH         -> tryToSendEmail(datastore, emailBytes)
-        }
-    }
-
-    private fun thisExactEmailAlreadySent(emailBytes: ByteArray, applicationState: GmailerState): Boolean {
-        val separatorBetweenHeaderAndMainContent = "________________________________"
-        val newEmailContents = String(emailBytes).substringAfter(separatorBetweenHeaderAndMainContent)
-        val previousEmailContents = applicationState.emailContents.substringAfter(separatorBetweenHeaderAndMainContent)
-        return newEmailContents.contentEquals(previousEmailContents)
-    }
-
-    private fun tryToSendEmail(datastore: Datastore<GmailerState>, rawMessageToSend: ByteArray?): String {
-        val fromEmailAddress = config.get(KOTLIN_GMAILER_FROM_ADDRESS)
-        val fromFullName = config.get(KOTLIN_GMAILER_FROM_FULLNAME)
-        val toEmailAddress = config.get(KOTLIN_GMAILER_TO_ADDRESS)
-        val toFullName = config.get(KOTLIN_GMAILER_TO_FULLNAME)
-        val bccEmailAddress = config.get(KOTLIN_GMAILER_BCC_ADDRESS)
-
-        rawMessageToSend?.let {
             val clonedMessage = gmailer.newMessageFrom(rawMessageToSend)
             val clonedMessageWithNewHeader = clonedMessage?.run {
-                    replaceSender(InternetAddress(fromEmailAddress, fromFullName))
-                    replaceRecipient(InternetAddress(toEmailAddress, toFullName), RecipientType.TO)
-                    replaceRecipient(InternetAddress(bccEmailAddress), RecipientType.BCC)
-                    encode()
+                replaceSender(InternetAddress(fromEmailAddress, fromFullName))
+                replaceRecipient(InternetAddress(toEmailAddress, toFullName), RecipientType.TO)
+                replaceRecipient(InternetAddress(bccEmailAddress), RecipientType.BCC)
+                encode()
             }
 
             val gmailResponse = clonedMessageWithNewHeader?.let { gmailer.send(clonedMessageWithNewHeader) }
@@ -152,18 +109,43 @@ class GmailBot(private val gmailer: Gmailer, private val dropboxClient: SimpleDr
             return resultMessages.joinToString("\n")
         }
 
-        return "Error - could not get raw message content for email"
+        val appStateMetadata = FlatFileApplicationStateMetadata("/gmailer_state.json", GmailerState::class.java)
+        val datastore: Datastore<GmailerState> = DropboxDatastore(dropboxClient, appStateMetadata)
+        val shouldRunNow = daysOfMonthToRun.includes(now.dayOfMonth)
+
+        return shouldRunNow.flatMap { datastore.currentApplicationState() }
+                           .flatMap { applicationState: GmailerState -> shouldTryToSend(applicationState, now) }
+                           .map { emailBytes -> tryToSendEmail(datastore, emailBytes) }
+                           .orElse {it.message }
     }
 
-    private fun ZonedDateTime.yearMonth(): YearMonth = YearMonth.from(this)
-}
+    private fun shouldTryToSend(applicationState: GmailerState, now: ZonedDateTime): Result<Err, ByteArray> {
+        fun ZonedDateTime.yearMonth(): YearMonth = YearMonth.from(this)
 
-enum class State {
-    NO_EMAIL_SENT_THIS_MONTH,
-    AN_EMAIL_ALREADY_SENT_THIS_MONTH,
-    THIS_EMAIL_ALREADY_SENT,
-    INVALID_STATE_IN_FUTURE,
-    UNKNOWN_ERROR
+        fun thisExactEmailAlreadySent(emailBytes: ByteArray, applicationState: GmailerState): Boolean {
+            val separatorBetweenHeaderAndMainContent = "________________________________"
+            val newEmailContents = String(emailBytes).substringAfter(separatorBetweenHeaderAndMainContent)
+            val previousEmailContents = applicationState.emailContents.substringAfter(separatorBetweenHeaderAndMainContent)
+            return newEmailContents.contentEquals(previousEmailContents)
+        }
+
+        val gmailQuery = config.get(KOTLIN_GMAILER_GMAIL_QUERY)
+        val searchResult = gmailer.lastEmailForQuery(gmailQuery)
+        val emailBytes = searchResult?.let {
+            gmailer.rawContentOf(searchResult)
+        }
+
+        val lastEmailSent = applicationState.lastEmailSent
+        return when {
+            lastEmailSent > now                                     -> Failure(InvalidStateInFuture())
+            searchResult == null                                    -> Failure(NoMatchingResultsForQuery(gmailQuery))
+            emailBytes == null                                      -> Failure(CouldNotGetRawContentForEmail())
+            thisExactEmailAlreadySent(emailBytes, applicationState) -> Failure(ThisEmailAlreadySent())
+            lastEmailSent.yearMonth() == now.yearMonth()            -> Failure(AnEmailAlreadySentThisMonth(now))
+            lastEmailSent.yearMonth() < now.yearMonth()             -> Success(emailBytes)
+            else                                                    -> Failure(UnknownError())
+        }
+    }
 }
 
 
@@ -192,6 +174,32 @@ fun <F, S> Result<F, S>.orElse(f: (F) -> S): S =
             is Failure<F> -> f(this.reason)
         }
 
-class NoNeedToRunAtThisTime(dayOfMonth: Int, daysOfMonthToRun: List<Int>) {
-    val message = "No need to run: day of month is: $dayOfMonth, only running on day ${daysOfMonthToRun.joinToString(", ")} of each month"
+class NoNeedToRunAtThisTime(dayOfMonth: Int, daysOfMonthToRun: List<Int>) : Err  {
+    override val message = "No need to run: day of month is: $dayOfMonth, only running on day ${daysOfMonthToRun.joinToString(", ")} of each month"
 }
+
+class InvalidStateInFuture : Err {
+    override val message = "Exiting due to invalid state, previous email appears to have been sent in the future"
+}
+
+class ThisEmailAlreadySent : Err {
+    override val message = "Exiting as this exact email has already been sent"
+}
+
+class AnEmailAlreadySentThisMonth(now: ZonedDateTime) : Err {
+    override val message = "Exiting, email has already been sent for ${now.month.getDisplayName(TextStyle.FULL, Locale.getDefault())} ${now.year}"
+}
+
+class NoMatchingResultsForQuery(queryString: String) : Err {
+    override val message = "No matching results for query: '$queryString'"
+}
+
+class CouldNotGetRawContentForEmail : Err {
+    override val message = "Error - could not get raw message content for email"
+}
+
+class UnknownError : Err {
+    override val message = "Exiting due to unknown error"
+}
+
+interface Err { val message: String }
