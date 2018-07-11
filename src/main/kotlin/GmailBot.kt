@@ -184,9 +184,9 @@ fun <F, S, T> Result<F, S>.flatMap(f: (S) -> Result<F, T>): Result<F, T> =
         is Failure<F> -> this
     }
 
-fun <F, G, S> Result<F, S>.fold(failure: (F) -> G, success: (S) -> G): G = this.map(success).orFlse(failure)
+fun <F, S, FINAL> Result<F, S>.fold(failure: (F) -> FINAL, success: (S) -> FINAL) : FINAL = this.map(success).orElse(failure)
 
-fun <F, S> Result<F, S>.orFlse(f: (F) -> S): S =
+fun <F, S> Result<F, S>.orElse(f: (F) -> S): S =
         when (this) {
             is Success<S> -> this.value
             is Failure<F> -> f(this.reason)
