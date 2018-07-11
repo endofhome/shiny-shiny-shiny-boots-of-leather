@@ -174,13 +174,13 @@ sealed class Result<out E, out T> {
 
 fun <F, S, T> Result<F, S>.map(f: (S) -> T): Result<F, T> =
         when (this) {
-            is Success<S> -> Success(f(value))
+            is Success<S> -> Success(f(this.value))
             is Failure<F> -> this
         }
 
 fun <F, S, T> Result<F, S>.flatMap(f: (S) -> Result<F, T>): Result<F, T> =
     when (this) {
-        is Success<S> -> f(value)
+        is Success<S> -> f(this.value)
         is Failure<F> -> this
     }
 
