@@ -166,7 +166,7 @@ class GmailerBotAcceptanceTest {
           |""".trimMargin()
         val stateFile = FileLike("/gmailer_state.json", state)
 
-        val dropboxClient = StubDropboxClientThatCannotStore(listOf(stateFile))
+        val dropboxClient = StubDropboxClient(listOf(stateFile))
         val emails = listOf(Message().setRaw("New email data"))
         val jobResult = GmailBot(StubGmailerThatCannotRetrieveRawContent(emails), dropboxClient, config).run(time, listOf(1))
         assertThat(jobResult, equalTo("Error - could not get raw message content for email"))
