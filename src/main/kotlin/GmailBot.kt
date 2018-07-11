@@ -167,7 +167,7 @@ enum class State {
 }
 
 
-sealed class Result<out E, out T> {
+sealed class Result<out F, out S> {
     data class Success<out S>(val value: S) : Result<Nothing, S>()
     data class Failure<out F>(val reason: F) : Result<F, Nothing>()
 }
