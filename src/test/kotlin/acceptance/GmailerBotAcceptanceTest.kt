@@ -176,7 +176,7 @@ class GmailerBotAcceptanceTest {
     fun `Error message is provided when file does not exist in Dropbox`() {
         val dropboxClient = StubDropboxClient(emptyList())
         val emails = listOf(Message().setRaw("New email data"))
-        val jobResult = GmailBot(StubGmailerThatCannotRetrieveRawContent(emails), dropboxClient, config).run(time, listOf(1))
+        val jobResult = GmailBot(StubGmailer(emails), dropboxClient, config).run(time, listOf(1))
         assertThat(jobResult, equalTo("Error downloading file /gmailer_state.json from Dropbox"))
     }
 }
