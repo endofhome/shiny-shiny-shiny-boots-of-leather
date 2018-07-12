@@ -12,6 +12,7 @@ import config.Configuration
 import datastore.ErrorDownloadingFileFromDropbox
 import datastore.SimpleDropboxClient
 import datastore.WriteState
+import gmail.CouldNotSendEmail
 import gmail.SimpleGmailClient
 import org.junit.Test
 import java.time.ZoneOffset.UTC
@@ -205,11 +206,11 @@ open class StubGmailClient(private val emails: List<Message>) : SimpleGmailClien
     override fun rawContentOf(cookedMessage: Message): ByteArray? =
             cookedMessage.raw.toByteArray()
 
-    override fun send(message: Message): Message? = Message()
+    override fun send(message: Message): Result<CouldNotSendEmail, Message> = Success(Message())
 }
 
 class StubGmailClientThatCannotSend(emails: List<Message>) : StubGmailClient(emails) {
-    override fun send(message: Message): Message? = null
+    override fun send(message: Message): Result<CouldNotSendEmail, Message> = Failure(CouldNotSendEmail(message))
 }
 
 class StubGmailClientThatCannotRetrieveRawContent(emails: List<Message>) : StubGmailClient(emails) {

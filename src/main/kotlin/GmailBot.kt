@@ -116,18 +116,13 @@ class GmailBot(private val gmailClient: SimpleGmailClient, private val dropboxCl
             encode()
         }
 
-        val gmailResponse = clonedMessageWithNewHeaders.let { gmailClient.send(clonedMessageWithNewHeaders) }
+        val sendResult = clonedMessageWithNewHeaders.let { gmailClient.send(clonedMessageWithNewHeaders) }
+        if (sendResult is Failure) return sendResult.reason.message
+        val wasEmailSent = "New email has been sent"
 
-        val dropboxState = gmailResponse?.let {
-            val emailContents = clonedMessageWithNewHeaders.decodeRaw()?.let { String(it) }
-            val newState = emailContents?.let { GmailerState(ZonedDateTime.now(), emailContents) }
-            newState?.let { datastore.store(newState) }
-        }
-
-        val wasEmailSent = gmailResponse?.let {
-            "New email has been sent"
-        } ?: "Error - could not send email/s"
-
+        val emailContents = clonedMessageWithNewHeaders.decodeRaw()?.let { String(it) }
+        val newState = emailContents?.let { GmailerState(ZonedDateTime.now(), emailContents) }
+        val dropboxState = newState?.let { datastore.store(newState) }
         val wasStateUpdated = dropboxState?.let {
             when (it) {
                 is WriteSuccess -> "Current state has been stored in Dropbox"
