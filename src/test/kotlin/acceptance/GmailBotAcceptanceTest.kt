@@ -12,12 +12,12 @@ import config.Configuration
 import datastore.ErrorDownloadingFileFromDropbox
 import datastore.SimpleDropboxClient
 import datastore.WriteState
-import gmail.Gmailer
+import gmail.SimpleGmailClient
 import org.junit.Test
 import java.time.ZoneOffset.UTC
 import java.time.ZonedDateTime
 
-class GmailerBotAcceptanceTest {
+class GmailBotAcceptanceTest {
 
     private val time = ZonedDateTime.of(2018, 6, 1, 0, 0, 0, 0, UTC)
     private val config = Configuration(RequiredConfig.values().toList().associate { it to "x@y" }, null)
@@ -35,7 +35,7 @@ class GmailerBotAcceptanceTest {
 
         val dropboxClient = StubDropboxClient(listOf(stateFile))
         val emails = listOf(Message().setRaw("New email data"))
-        val jobResult = GmailBot(StubGmailer(emails), dropboxClient, config).run(time, listOf(1))
+        val jobResult = GmailBot(StubGmailClient(emails), dropboxClient, config).run(time, listOf(1))
         assertThat(jobResult, equalTo(
                 "New email has been sent\n" +
                 "Current state has been stored in Dropbox")
@@ -55,7 +55,7 @@ class GmailerBotAcceptanceTest {
 
         val dropboxClient = StubDropboxClient(listOf(stateFile))
         val emails = listOf(Message().setRaw("New email data"))
-        val jobResult = GmailBot(StubGmailer(emails), dropboxClient, config).run(time, listOf(1))
+        val jobResult = GmailBot(StubGmailClient(emails), dropboxClient, config).run(time, listOf(1))
         assertThat(jobResult, equalTo("Exiting, email has already been sent for June 2018"))
     }
 
@@ -72,7 +72,7 @@ class GmailerBotAcceptanceTest {
 
         val dropboxClient = StubDropboxClient(listOf(stateFile))
         val emails = listOf(Message().setRaw("Last month's email data"))
-        val jobResult = GmailBot(StubGmailer(emails), dropboxClient, config).run(time, listOf(1))
+        val jobResult = GmailBot(StubGmailClient(emails), dropboxClient, config).run(time, listOf(1))
         assertThat(jobResult, equalTo("Exiting due to invalid state, previous email appears to have been sent in the future"))
     }
 
@@ -99,7 +99,7 @@ class GmailerBotAcceptanceTest {
           |     ________________________________
           |     Already sent this one
           """.trimMargin()))
-        val jobResult = GmailBot(StubGmailer(emails), dropboxClient, config).run(time, listOf(1))
+        val jobResult = GmailBot(StubGmailClient(emails), dropboxClient, config).run(time, listOf(1))
         assertThat(jobResult, equalTo("Exiting as this exact email has already been sent"))
     }
 
@@ -117,7 +117,7 @@ class GmailerBotAcceptanceTest {
         val dropboxClient = StubDropboxClient(listOf(stateFile))
         val emails = listOf(Message().setRaw("New email data"))
         val secondOfJune = ZonedDateTime.of(2018, 6, 1, 0, 0, 0, 0, UTC)
-        val jobResult = GmailBot(StubGmailer(emails), dropboxClient, config).run(secondOfJune, listOf(2, 11, 12, 31))
+        val jobResult = GmailBot(StubGmailClient(emails), dropboxClient, config).run(secondOfJune, listOf(2, 11, 12, 31))
         assertThat(jobResult, equalTo("No need to run: day of month is: 1, only running on day 2, 11, 12, 31 of each month"))
     }
 
@@ -134,7 +134,7 @@ class GmailerBotAcceptanceTest {
 
         val dropboxClient = StubDropboxClient(listOf(stateFile))
         val emails = listOf(Message().setRaw("New email data"))
-        val jobResult = GmailBot(StubGmailerThatCannotSend(emails), dropboxClient, config).run(time, listOf(1))
+        val jobResult = GmailBot(StubGmailClientThatCannotSend(emails), dropboxClient, config).run(time, listOf(1))
         assertThat(jobResult, equalTo("Error - could not send email/s"))
     }
 
@@ -151,7 +151,7 @@ class GmailerBotAcceptanceTest {
 
         val dropboxClient = StubDropboxClientThatCannotStore(listOf(stateFile))
         val emails = listOf(Message().setRaw("New email data"))
-        val jobResult = GmailBot(StubGmailer(emails), dropboxClient, config).run(time, listOf(1))
+        val jobResult = GmailBot(StubGmailClient(emails), dropboxClient, config).run(time, listOf(1))
         assertThat(jobResult, equalTo("New email has been sent\nError - could not store state in Dropbox"))
     }
 
@@ -168,7 +168,7 @@ class GmailerBotAcceptanceTest {
 
         val dropboxClient = StubDropboxClient(listOf(stateFile))
         val emails = listOf(Message().setRaw("New email data"))
-        val jobResult = GmailBot(StubGmailerThatCannotRetrieveRawContent(emails), dropboxClient, config).run(time, listOf(1))
+        val jobResult = GmailBot(StubGmailClientThatCannotRetrieveRawContent(emails), dropboxClient, config).run(time, listOf(1))
         assertThat(jobResult, equalTo("Error - could not get raw message content for email"))
     }
 
@@ -184,7 +184,7 @@ class GmailerBotAcceptanceTest {
         val stateFile = FileLike("/gmailer_state.json", state)
 
         val dropboxClient = StubDropboxClient(listOf(stateFile))
-        val jobResult = GmailBot(StubGmailerThatReturnsNoMatches(emptyList()), dropboxClient, config).run(time, listOf(1))
+        val jobResult = GmailBot(StubGmailClientThatReturnsNoMatches(emptyList()), dropboxClient, config).run(time, listOf(1))
         assertThat(jobResult, equalTo("No matching results for query: 'x@y'"))
     }
 
@@ -192,12 +192,12 @@ class GmailerBotAcceptanceTest {
     fun `Error message is provided when file does not exist in Dropbox`() {
         val dropboxClient = StubDropboxClient(emptyList())
         val emails = listOf(Message().setRaw("New email data"))
-        val jobResult = GmailBot(StubGmailer(emails), dropboxClient, config).run(time, listOf(1))
+        val jobResult = GmailBot(StubGmailClient(emails), dropboxClient, config).run(time, listOf(1))
         assertThat(jobResult, equalTo("Error downloading file /gmailer_state.json from Dropbox"))
     }
 }
 
-open class StubGmailer(private val emails: List<Message>) : Gmailer {
+open class StubGmailClient(private val emails: List<Message>) : SimpleGmailClient {
     override fun lastEmailForQuery(queryString: String): Message? {
         return emails.last()
     }
@@ -208,15 +208,15 @@ open class StubGmailer(private val emails: List<Message>) : Gmailer {
     override fun send(message: Message): Message? = Message()
 }
 
-class StubGmailerThatCannotSend(emails: List<Message>) : StubGmailer(emails) {
+class StubGmailClientThatCannotSend(emails: List<Message>) : StubGmailClient(emails) {
     override fun send(message: Message): Message? = null
 }
 
-class StubGmailerThatCannotRetrieveRawContent(emails: List<Message>) : StubGmailer(emails) {
+class StubGmailClientThatCannotRetrieveRawContent(emails: List<Message>) : StubGmailClient(emails) {
     override fun rawContentOf(cookedMessage: Message): ByteArray? = null
 }
 
-class StubGmailerThatReturnsNoMatches(emails: List<Message>) : StubGmailer(emails) {
+class StubGmailClientThatReturnsNoMatches(emails: List<Message>) : StubGmailClient(emails) {
     override fun lastEmailForQuery(queryString: String): Message? = null
 }
 

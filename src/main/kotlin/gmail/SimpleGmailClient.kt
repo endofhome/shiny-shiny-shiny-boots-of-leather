@@ -11,7 +11,7 @@ import java.util.Properties
 import javax.mail.Session
 import javax.mail.internet.MimeMessage
 
-interface Gmailer {
+interface SimpleGmailClient {
     fun lastEmailForQuery(queryString: String): Message?
     fun send(message: Message): Message?
     fun rawContentOf(cookedMessage: Message): ByteArray?
@@ -22,7 +22,7 @@ interface Gmailer {
             )
 }
 
-class HttpGmailer(private val gmail: Gmail) : Gmailer {
+class HttpGmailClient(private val gmail: Gmail) : SimpleGmailClient {
     private val user = "me"
 
     override fun lastEmailForQuery(queryString: String): Message? {

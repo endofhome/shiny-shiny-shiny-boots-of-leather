@@ -27,7 +27,7 @@ interface SimpleDropboxClient {
     fun writeFile(fileContents: String, filename: String): WriteState
 }
 
-class HttpSimpleDropboxClient(identifier: String, config: Configuration) : SimpleDropboxClient {
+class HttpDropboxClient(identifier: String, config: Configuration) : SimpleDropboxClient {
     private val requestConfig: DbxRequestConfig = DbxRequestConfig.newBuilder(identifier).build()
     private val client: DbxClientV2 = DbxClientV2(requestConfig, config.get(KOTLIN_GMAILER_DROPBOX_ACCESS_TOKEN))
 

@@ -13,14 +13,14 @@ import config.Configurator
 import datastore.Datastore
 import datastore.DropboxDatastore
 import datastore.FlatFileApplicationStateMetadata
-import datastore.HttpSimpleDropboxClient
+import datastore.HttpDropboxClient
 import datastore.SimpleDropboxClient
 import datastore.WriteState.WriteFailure
 import datastore.WriteState.WriteSuccess
 import gmail.AuthorisedGmailProvider
-import gmail.Gmailer
 import gmail.GmailerState
-import gmail.HttpGmailer
+import gmail.HttpGmailClient
+import gmail.SimpleGmailClient
 import gmail.encode
 import gmail.replaceRecipient
 import gmail.replaceSender
@@ -36,14 +36,14 @@ fun main(args: Array<String>) {
     val requiredConfig: List<RequiredConfig> = RequiredConfig.values().toList()
     val config = Configurator(requiredConfig, Paths.get("credentials"))
     val gmail = AuthorisedGmailProvider(4000, GmailBot.appName, config).gmail()
-    val gmailer = HttpGmailer(gmail)
-    val dropboxClient = HttpSimpleDropboxClient(GmailBot.appName, config)
+    val gmailer = HttpGmailClient(gmail)
+    val dropboxClient = HttpDropboxClient(GmailBot.appName, config)
     val runOnDays = config.get(KOTLIN_GMAILER_RUN_ON_DAYS).split(",").map { it.trim().toInt() }
     val result = GmailBot(gmailer, dropboxClient, config).run(ZonedDateTime.now(), runOnDays)
     println(result)
 }
 
-class GmailBot(private val gmailer: Gmailer, private val dropboxClient: SimpleDropboxClient, private val config: Configuration) {
+class GmailBot(private val gmailClient: SimpleGmailClient, private val dropboxClient: SimpleDropboxClient, private val config: Configuration) {
 
         companion object {
             const val appName = "kotlin-gmailer-bot"
@@ -85,9 +85,9 @@ class GmailBot(private val gmailer: Gmailer, private val dropboxClient: SimpleDr
         }
 
         val gmailQuery = config.get(KOTLIN_GMAILER_GMAIL_QUERY)
-        val searchResult = gmailer.lastEmailForQuery(gmailQuery)
+        val searchResult = gmailClient.lastEmailForQuery(gmailQuery)
         val emailBytes = searchResult?.let {
-            gmailer.rawContentOf(searchResult)
+            gmailClient.rawContentOf(searchResult)
         }
 
         val lastEmailSent = applicationState.lastEmailSent
@@ -109,14 +109,14 @@ class GmailBot(private val gmailer: Gmailer, private val dropboxClient: SimpleDr
         val toFullName = config.get(KOTLIN_GMAILER_TO_FULLNAME)
         val bccEmailAddress = config.get(KOTLIN_GMAILER_BCC_ADDRESS)
 
-        val clonedMessageWithNewHeaders = gmailer.newMessageFrom(rawMessageToSend).run {
+        val clonedMessageWithNewHeaders = gmailClient.newMessageFrom(rawMessageToSend).run {
             replaceSender(InternetAddress(fromEmailAddress, fromFullName))
             replaceRecipient(InternetAddress(toEmailAddress, toFullName), RecipientType.TO)
             replaceRecipient(InternetAddress(bccEmailAddress), RecipientType.BCC)
             encode()
         }
 
-        val gmailResponse = clonedMessageWithNewHeaders.let { gmailer.send(clonedMessageWithNewHeaders) }
+        val gmailResponse = clonedMessageWithNewHeaders.let { gmailClient.send(clonedMessageWithNewHeaders) }
 
         val dropboxState = gmailResponse?.let {
             val emailContents = clonedMessageWithNewHeaders.decodeRaw()?.let { String(it) }
