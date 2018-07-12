@@ -15,13 +15,11 @@ interface Gmailer {
     fun lastEmailForQuery(queryString: String): Message?
     fun send(message: Message): Message?
     fun rawContentOf(cookedMessage: Message): ByteArray?
-    fun newMessageFrom(emailBytes: ByteArray?): MimeMessage? {
-        val props = Properties()
-        val sessionMaybe: Session? = Session.getDefaultInstance(props, null)
-        return sessionMaybe?.let { session ->
-            MimeMessage(session, ByteArrayInputStream(emailBytes))
-        }
-    }
+    fun newMessageFrom(emailBytes: ByteArray?): MimeMessage =
+            MimeMessage(
+                    Session.getDefaultInstance(Properties(), null),
+                    ByteArrayInputStream(emailBytes)
+            )
 }
 
 class HttpGmailer(private val gmail: Gmail) : Gmailer {

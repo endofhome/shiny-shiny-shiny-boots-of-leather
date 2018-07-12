@@ -109,19 +109,17 @@ class GmailBot(private val gmailer: Gmailer, private val dropboxClient: SimpleDr
         val toFullName = config.get(KOTLIN_GMAILER_TO_FULLNAME)
         val bccEmailAddress = config.get(KOTLIN_GMAILER_BCC_ADDRESS)
 
-
-        val clonedMessage = gmailer.newMessageFrom(rawMessageToSend)
-        val clonedMessageWithNewHeader = clonedMessage?.run {
+        val clonedMessageWithNewHeaders = gmailer.newMessageFrom(rawMessageToSend).run {
             replaceSender(InternetAddress(fromEmailAddress, fromFullName))
             replaceRecipient(InternetAddress(toEmailAddress, toFullName), RecipientType.TO)
             replaceRecipient(InternetAddress(bccEmailAddress), RecipientType.BCC)
             encode()
         }
 
-        val gmailResponse = clonedMessageWithNewHeader?.let { gmailer.send(clonedMessageWithNewHeader) }
+        val gmailResponse = clonedMessageWithNewHeaders.let { gmailer.send(clonedMessageWithNewHeaders) }
 
         val dropboxState = gmailResponse?.let {
-            val emailContents = clonedMessageWithNewHeader.decodeRaw()?.let { String(it) }
+            val emailContents = clonedMessageWithNewHeaders.decodeRaw()?.let { String(it) }
             val newState = emailContents?.let { GmailerState(ZonedDateTime.now(), emailContents) }
             newState?.let { datastore.store(newState) }
         }
