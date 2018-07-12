@@ -70,7 +70,7 @@ class GmailBot(private val gmailClient: SimpleGmailClient, private val dropboxCl
         return shouldRunNow.flatMap { datastore.currentApplicationState() }
                            .flatMap { applicationState: GmailerState -> shouldTryToSend(applicationState, now) }
                            .map { emailBytes -> tryToSendEmail(datastore, emailBytes) }
-                           .orElse {it.message }
+                           .orElse { error -> error.message }
     }
 
     private fun shouldTryToSend(applicationState: GmailerState, now: ZonedDateTime): Result<Err, ByteArray> {
@@ -115,18 +115,12 @@ class GmailBot(private val gmailClient: SimpleGmailClient, private val dropboxCl
             encode()
         }
 
-        val sendResult = clonedMessageWithNewHeaders.let { gmailClient.send(clonedMessageWithNewHeaders) }
-        if (sendResult is Failure) return sendResult.reason.message
-
-        val emailContentsResult = clonedMessageWithNewHeaders.decodeRawWithResult()
-        if (emailContentsResult is Failure) return emailContentsResult.reason.message
-
-        val emailContents = (emailContentsResult as Success).value
-        val newState = GmailerState(ZonedDateTime.now(), emailContents)
-        val storeResult = datastore.store(newState, "New email has been sent")
-        if (storeResult is Failure) return storeResult.reason.message
-
-        return (storeResult as Success).value
+        return gmailClient.send(clonedMessageWithNewHeaders)
+                          .flatMap { message -> message.decodeRawWithResult() }
+                          .flatMap { emailContents ->
+                              val newState = GmailerState(ZonedDateTime.now(), emailContents)
+                              datastore.store(newState, "New email has been sent") }
+                          .orElse { error -> error.message }
     }
 
     private fun Message.decodeRawWithResult() : Result<ErrorDecoding, String> =

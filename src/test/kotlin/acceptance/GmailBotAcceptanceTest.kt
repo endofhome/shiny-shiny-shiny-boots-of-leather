@@ -206,7 +206,7 @@ open class StubGmailClient(private val emails: List<Message>) : SimpleGmailClien
     override fun rawContentOf(cookedMessage: Message): ByteArray? =
             cookedMessage.raw.toByteArray()
 
-    override fun send(message: Message): Result<CouldNotSendEmail, Message> = Success(Message())
+    override fun send(message: Message): Result<CouldNotSendEmail, Message> = Success(message)
 }
 
 class StubGmailClientThatCannotSend(emails: List<Message>) : StubGmailClient(emails) {
