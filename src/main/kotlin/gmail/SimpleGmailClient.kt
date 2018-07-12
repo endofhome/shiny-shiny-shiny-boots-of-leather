@@ -41,7 +41,7 @@ class HttpGmailClient(private val gmail: Gmail) : SimpleGmailClient {
             Success(messages().send(user, message).execute())
         } catch (e: Exception) {
             when (e) {
-                is IOException -> Failure(CouldNotSendEmail(message))
+                is IOException -> Failure(CouldNotSendEmail())
                 else           -> throw e
             }
         }
@@ -61,6 +61,6 @@ class HttpGmailClient(private val gmail: Gmail) : SimpleGmailClient {
 
 interface ApplicationState
 data class GmailerState(val lastEmailSent: ZonedDateTime, val emailContents: String) : ApplicationState
-class CouldNotSendEmail(message: Message) : Err {
+class CouldNotSendEmail : Err {
     override val message = "Error - could not send email/s"
 }

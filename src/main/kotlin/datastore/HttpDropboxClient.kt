@@ -14,8 +14,6 @@ import com.dropbox.core.v2.files.DownloadErrorException
 import com.dropbox.core.v2.files.FileMetadata
 import com.dropbox.core.v2.files.WriteMode
 import config.Configuration
-import datastore.WriteState.WriteFailure
-import datastore.WriteState.WriteSuccess
 import flatMap
 import fold
 import java.io.ByteArrayInputStream
@@ -24,7 +22,7 @@ import java.io.InputStream
 
 interface SimpleDropboxClient {
     fun readFile(filename: String): Result<ErrorDownloadingFileFromDropbox, String>
-    fun writeFile(fileContents: String, filename: String): WriteState
+    fun writeFile(fileContents: String, filename: String, fileDescription: String): Result<DropboxWriteFailure, String>
 }
 
 class HttpDropboxClient(identifier: String, config: Configuration) : SimpleDropboxClient {
@@ -39,19 +37,19 @@ class HttpDropboxClient(identifier: String, config: Configuration) : SimpleDropb
                                       )
     }
 
-    override fun writeFile(fileContents: String, filename: String): WriteState {
+    override fun writeFile(fileContents: String, filename: String, fileDescription: String): Result<DropboxWriteFailure, String> {
         return try {
             ByteArrayInputStream(fileContents.toByteArray()).use { inputStream ->
                 client.files().uploadBuilder(filename)
                         .withMode(WriteMode.OVERWRITE)
                         .uploadAndFinish(inputStream)
             }
-            WriteSuccess()
+            Success("$fileDescription\nCurrent state has been stored in Dropbox")
         } catch (e: Exception) {
             when (e) {
                 is DbxApiException,
                 is DbxException,
-                is IOException -> WriteFailure()
+                is IOException      -> Failure(DropboxWriteFailure(fileDescription))
                 else                -> throw e
             }
         }
@@ -81,11 +79,10 @@ class HttpDropboxClient(identifier: String, config: Configuration) : SimpleDropb
             }
 }
 
-sealed class WriteState {
-    class WriteSuccess : WriteState()
-    class WriteFailure : WriteState()
-}
-
 class ErrorDownloadingFileFromDropbox(filename: String? = null) : Err {
     override val message = "Error downloading file ${ filename?.let { "$it " } ?: "" }from Dropbox"
+}
+
+class DropboxWriteFailure(stateDescription: String) : Err {
+    override val message = "$stateDescription\nError - could not store state in Dropbox"
 }

@@ -20,7 +20,7 @@ class DropboxDatastoreTest {
         val dropboxDatastore = DropboxDatastore(StubDropboxClient(initialFiles), metadata)
         val testAppState = TestAppState("some new state")
 
-        dropboxDatastore.store(testAppState)
+        dropboxDatastore.store(testAppState, "")
 
         assertThat(dropboxDatastore.currentApplicationState().expectSuccess(), equalTo(testAppState))
     }

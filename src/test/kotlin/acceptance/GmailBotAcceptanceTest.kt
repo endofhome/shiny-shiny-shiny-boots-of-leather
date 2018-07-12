@@ -9,9 +9,9 @@ import com.google.api.services.gmail.model.Message
 import com.natpryce.hamkrest.assertion.assertThat
 import com.natpryce.hamkrest.equalTo
 import config.Configuration
+import datastore.DropboxWriteFailure
 import datastore.ErrorDownloadingFileFromDropbox
 import datastore.SimpleDropboxClient
-import datastore.WriteState
 import gmail.CouldNotSendEmail
 import gmail.SimpleGmailClient
 import org.junit.Test
@@ -210,7 +210,7 @@ open class StubGmailClient(private val emails: List<Message>) : SimpleGmailClien
 }
 
 class StubGmailClientThatCannotSend(emails: List<Message>) : StubGmailClient(emails) {
-    override fun send(message: Message): Result<CouldNotSendEmail, Message> = Failure(CouldNotSendEmail(message))
+    override fun send(message: Message): Result<CouldNotSendEmail, Message> = Failure(CouldNotSendEmail())
 }
 
 class StubGmailClientThatCannotRetrieveRawContent(emails: List<Message>) : StubGmailClient(emails) {
@@ -232,14 +232,15 @@ open class StubDropboxClient(initialFiles: List<FileLike>) : SimpleDropboxClient
         } ?: Failure(ErrorDownloadingFileFromDropbox(filename))
     }
 
-    override fun writeFile(fileContents: String, filename: String): WriteState {
+    override fun writeFile(fileContents: String, filename: String, fileDescription: String): Result<DropboxWriteFailure, String> {
         files += FileLike(filename, fileContents)
-        return WriteState.WriteSuccess()
+        return Success("$fileDescription\nCurrent state has been stored in Dropbox")
     }
 }
 
 class StubDropboxClientThatCannotStore(initialFiles: List<FileLike>) : StubDropboxClient(initialFiles) {
-    override fun writeFile(fileContents: String, filename: String): WriteState = WriteState.WriteFailure()
+    override fun writeFile(fileContents: String, filename: String, fileDescription: String): Result<DropboxWriteFailure, String> =
+            Failure(DropboxWriteFailure(fileDescription))
 }
 
 data class FileLike(val name: String, val contents: String)

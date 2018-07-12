@@ -16,8 +16,6 @@ import datastore.DropboxDatastore
 import datastore.FlatFileApplicationStateMetadata
 import datastore.HttpDropboxClient
 import datastore.SimpleDropboxClient
-import datastore.WriteState.WriteFailure
-import datastore.WriteState.WriteSuccess
 import gmail.AuthorisedGmailProvider
 import gmail.GmailerState
 import gmail.HttpGmailClient
@@ -119,20 +117,16 @@ class GmailBot(private val gmailClient: SimpleGmailClient, private val dropboxCl
 
         val sendResult = clonedMessageWithNewHeaders.let { gmailClient.send(clonedMessageWithNewHeaders) }
         if (sendResult is Failure) return sendResult.reason.message
-        val wasEmailSent = "New email has been sent"
 
         val emailContentsResult = clonedMessageWithNewHeaders.decodeRawWithResult()
         if (emailContentsResult is Failure) return emailContentsResult.reason.message
 
         val emailContents = (emailContentsResult as Success).value
         val newState = GmailerState(ZonedDateTime.now(), emailContents)
-        val wasStateUpdated = when (datastore.store(newState)) {
-                is WriteSuccess -> "Current state has been stored in Dropbox"
-                is WriteFailure -> "Error - could not store state in Dropbox"
-        }
+        val storeResult = datastore.store(newState, "New email has been sent")
+        if (storeResult is Failure) return storeResult.reason.message
 
-        val resultMessages = listOf(wasEmailSent, wasStateUpdated).filter { it.isNotBlank() }
-        return resultMessages.joinToString("\n")
+        return (storeResult as Success).value
     }
 
     private fun Message.decodeRawWithResult() : Result<ErrorDecoding, String> =
