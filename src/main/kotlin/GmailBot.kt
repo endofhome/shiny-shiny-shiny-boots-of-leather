@@ -8,6 +8,7 @@ import GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_TO_ADDRESS
 import GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_TO_FULLNAME
 import Result.Failure
 import Result.Success
+import com.google.api.services.gmail.model.Message
 import config.Configuration
 import config.Configurator
 import datastore.Datastore
@@ -120,19 +121,22 @@ class GmailBot(private val gmailClient: SimpleGmailClient, private val dropboxCl
         if (sendResult is Failure) return sendResult.reason.message
         val wasEmailSent = "New email has been sent"
 
-        val emailContents = clonedMessageWithNewHeaders.decodeRaw()?.let { String(it) }
-        val newState = emailContents?.let { GmailerState(ZonedDateTime.now(), emailContents) }
-        val dropboxState = newState?.let { datastore.store(newState) }
-        val wasStateUpdated = dropboxState?.let {
-            when (it) {
+        val emailContentsResult = clonedMessageWithNewHeaders.decodeRawWithResult()
+        if (emailContentsResult is Failure) return emailContentsResult.reason.message
+
+        val emailContents = (emailContentsResult as Success).value
+        val newState = GmailerState(ZonedDateTime.now(), emailContents)
+        val wasStateUpdated = when (datastore.store(newState)) {
                 is WriteSuccess -> "Current state has been stored in Dropbox"
                 is WriteFailure -> "Error - could not store state in Dropbox"
-            }
-        } ?: ""
+        }
 
         val resultMessages = listOf(wasEmailSent, wasStateUpdated).filter { it.isNotBlank() }
         return resultMessages.joinToString("\n")
     }
+
+    private fun Message.decodeRawWithResult() : Result<ErrorDecoding, String> =
+            this.decodeRaw()?.let { Success(String(it)) } ?: Failure(ErrorDecoding())
 
     private fun List<Int>.includes(dayOfMonth: Int): Result<NoNeedToRunAtThisTime, Int> = when {
         this.contains(dayOfMonth) -> Success(dayOfMonth)
@@ -192,6 +196,10 @@ class CouldNotGetRawContentForEmail : Err {
 
 class UnknownError : Err {
     override val message = "Exiting due to unknown error"
+}
+
+class ErrorDecoding : Err {
+    override val message = "Error - could not decode raw message"
 }
 
 interface Err { val message: String }

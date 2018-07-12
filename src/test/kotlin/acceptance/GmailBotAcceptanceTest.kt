@@ -190,7 +190,7 @@ class GmailBotAcceptanceTest {
     }
 
     @Test
-    fun `Error message is provided when file does not exist in Dropbox`() {
+    fun `Error message is provided when state file does not exist in Dropbox`() {
         val dropboxClient = StubDropboxClient(emptyList())
         val emails = listOf(Message().setRaw("New email data"))
         val jobResult = GmailBot(StubGmailClient(emails), dropboxClient, config).run(time, listOf(1))
