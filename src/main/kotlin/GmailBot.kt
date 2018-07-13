@@ -119,7 +119,8 @@ class GmailBot(private val gmailClient: SimpleGmailClient, private val dropboxCl
                           .flatMap { message -> message.decodeRawWithResult() }
                           .flatMap { emailContents ->
                               val newState = GmailerState(ZonedDateTime.now(), emailContents)
-                              datastore.store(newState, "New email has been sent") }
+                              datastore.store(newState, "New email has been sent")
+                          }
                           .orElse { error -> error.message }
     }
 
