@@ -1,17 +1,17 @@
 package datastore
 
 import Err
-import Result
-import Result.Failure
-import Result.Success
 import com.fasterxml.jackson.core.JsonParser.Feature.ALLOW_UNQUOTED_CONTROL_CHARS
 import com.fasterxml.jackson.core.JsonProcessingException
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
-import flatMap
-import fold
 import gmail.ApplicationState
+import result.Result
+import result.Result.Failure
+import result.Result.Success
+import result.flatMap
+import result.fold
 
 interface Datastore<T : ApplicationState> {
     fun currentApplicationState(): Result<Err, T>

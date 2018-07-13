@@ -1,14 +1,14 @@
 package gmail
 
 import Err
-import Result
-import Result.Failure
-import Result.Success
 import com.google.api.client.repackaged.org.apache.commons.codec.binary.Base64
 import com.google.api.services.gmail.Gmail
 import com.google.api.services.gmail.Gmail.Users.Messages
 import com.google.api.services.gmail.model.ListMessagesResponse
 import com.google.api.services.gmail.model.Message
+import result.Result
+import result.Result.Failure
+import result.Result.Success
 import java.io.ByteArrayInputStream
 import java.io.IOException
 import java.time.ZonedDateTime

@@ -6,8 +6,6 @@ import GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_GMAIL_QUERY
 import GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_RUN_ON_DAYS
 import GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_TO_ADDRESS
 import GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_TO_FULLNAME
-import Result.Failure
-import Result.Success
 import com.google.api.services.gmail.model.Message
 import config.Configuration
 import config.Configurator
@@ -23,6 +21,12 @@ import gmail.SimpleGmailClient
 import gmail.encode
 import gmail.replaceRecipient
 import gmail.replaceSender
+import result.Result
+import result.Result.Failure
+import result.Result.Success
+import result.flatMap
+import result.map
+import result.orElse
 import java.nio.file.Paths
 import java.time.YearMonth
 import java.time.ZonedDateTime
@@ -132,32 +136,6 @@ class GmailBot(private val gmailClient: SimpleGmailClient, private val dropboxCl
         else                      -> Failure(NoNeedToRunAtThisTime(dayOfMonth, this))
     }
 }
-
-
-sealed class Result<out F, out S> {
-    data class Success<out S>(val value: S) : Result<Nothing, S>()
-    data class Failure<out F>(val reason: F) : Result<F, Nothing>()
-}
-
-fun <F, S, T> Result<F, S>.map(f: (S) -> T): Result<F, T> =
-        when (this) {
-            is Success<S> -> Success(f(this.value))
-            is Failure<F> -> this
-        }
-
-fun <F, S, T> Result<F, S>.flatMap(f: (S) -> Result<F, T>): Result<F, T> =
-    when (this) {
-        is Success<S> -> f(this.value)
-        is Failure<F> -> this
-    }
-
-fun <F, S, FINAL> Result<F, S>.fold(failure: (F) -> FINAL, success: (S) -> FINAL) : FINAL = this.map(success).orElse(failure)
-
-fun <F, S> Result<F, S>.orElse(f: (F) -> S): S =
-        when (this) {
-            is Success<S> -> this.value
-            is Failure<F> -> f(this.reason)
-        }
 
 class NoNeedToRunAtThisTime(dayOfMonth: Int, daysOfMonthToRun: List<Int>) : Err  {
     override val message = "No need to run: day of month is: $dayOfMonth, only running on day ${daysOfMonthToRun.joinToString(", ")} of each month"

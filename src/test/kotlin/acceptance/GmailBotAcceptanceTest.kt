@@ -2,9 +2,6 @@ package acceptance
 
 import GmailBot
 import GmailBot.Companion.RequiredConfig
-import Result
-import Result.Failure
-import Result.Success
 import com.google.api.services.gmail.model.Message
 import com.natpryce.hamkrest.assertion.assertThat
 import com.natpryce.hamkrest.equalTo
@@ -15,6 +12,9 @@ import datastore.SimpleDropboxClient
 import gmail.CouldNotSendEmail
 import gmail.SimpleGmailClient
 import org.junit.Test
+import result.Result
+import result.Result.Failure
+import result.Result.Success
 import java.time.ZoneOffset.UTC
 import java.time.ZonedDateTime
 
