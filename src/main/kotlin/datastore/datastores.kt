@@ -1,12 +1,12 @@
 package datastore
 
-import Err
 import com.fasterxml.jackson.core.JsonParser.Feature.ALLOW_UNQUOTED_CONTROL_CHARS
 import com.fasterxml.jackson.core.JsonProcessingException
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import gmail.ApplicationState
+import result.Err
 import result.Result
 import result.Result.Failure
 import result.Result.Success

@@ -1,6 +1,5 @@
 package datastore
 
-import Err
 import GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_DROPBOX_ACCESS_TOKEN
 import com.dropbox.core.DbxApiException
 import com.dropbox.core.DbxDownloader
@@ -11,6 +10,7 @@ import com.dropbox.core.v2.files.DownloadErrorException
 import com.dropbox.core.v2.files.FileMetadata
 import com.dropbox.core.v2.files.WriteMode
 import config.Configuration
+import result.Err
 import result.Result
 import result.Result.Failure
 import result.Result.Success

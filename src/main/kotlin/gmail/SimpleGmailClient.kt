@@ -1,11 +1,11 @@
 package gmail
 
-import Err
 import com.google.api.client.repackaged.org.apache.commons.codec.binary.Base64
 import com.google.api.services.gmail.Gmail
 import com.google.api.services.gmail.Gmail.Users.Messages
 import com.google.api.services.gmail.model.ListMessagesResponse
 import com.google.api.services.gmail.model.Message
+import result.Err
 import result.Result
 import result.Result.Failure
 import result.Result.Success
