@@ -1,11 +1,13 @@
 import GmailBot.Companion.RequiredConfig
 import GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_BCC_ADDRESS
+import GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_DROPBOX_ACCESS_TOKEN
 import GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_FROM_ADDRESS
 import GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_FROM_FULLNAME
 import GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_GMAIL_QUERY
 import GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_RUN_ON_DAYS
 import GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_TO_ADDRESS
 import GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_TO_FULLNAME
+import GmailBot.Companion.RequiredConfig.values
 import com.google.api.services.gmail.model.Message
 import config.Configuration
 import config.Configurator
@@ -43,11 +45,11 @@ import javax.mail.Message.RecipientType
 import javax.mail.internet.InternetAddress
 
 fun main(args: Array<String>) {
-    val requiredConfig: List<RequiredConfig> = RequiredConfig.values().toList()
+    val requiredConfig: List<RequiredConfig> = values().toList()
     val config = Configurator(requiredConfig, Paths.get("credentials"))
     val gmail = AuthorisedGmailProvider(4000, GmailBot.appName, config).gmail()
     val gmailer = HttpGmailClient(gmail)
-    val dropboxClient = HttpDropboxClient(GmailBot.appName, config)
+    val dropboxClient = HttpDropboxClient(GmailBot.appName, config.get(KOTLIN_GMAILER_DROPBOX_ACCESS_TOKEN))
     val runOnDays = config.get(KOTLIN_GMAILER_RUN_ON_DAYS).split(",").map { it.trim().toInt() }
     val result = GmailBot(gmailer, dropboxClient, config).run(ZonedDateTime.now(), runOnDays)
     println(result)
