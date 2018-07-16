@@ -15,6 +15,9 @@ class Configuration (private val values: Map<RequiredConfig, String?>, val confi
         throw ConfigurationException("$requiredConfig was not available during get")
     }
 
+    fun getAsList(requiredConfig: RequiredConfig, delimiter: Char = ','): List<String> =
+        this.get(requiredConfig).split(delimiter)
+
     private fun validate(required: Set<RequiredConfig>, provided: Map<RequiredConfig, String?>) {
         fun pluralise(missingConfig: List<RequiredConfig>): String = when {
             missingConfig.size > 1 -> "s"
