@@ -124,13 +124,13 @@ class GmailForwarderAcceptanceTest {
 
         val dropboxClient = StubDropboxClient(listOf(stateFile))
         val emails = listOf(Message().setRaw("New email data"))
-        val secondOfJune = ZonedDateTime.of(2018, 6, 1, 0, 0, 0, 0, UTC)
+        val firstOfJune = ZonedDateTime.of(2018, 6, 1, 0, 0, 0, 0, UTC)
         val localConfig = config.copy(
                 values = configValues.toMutableMap()
                                      .apply { set(RequiredConfig.KOTLIN_GMAILER_RUN_ON_DAYS, "2, 11,12, 31 ") }
                                      .toMap()
         )
-        val jobResult = GmailForwarder("unused", StubGmailClient(emails), dropboxClient, localConfig).run(secondOfJune)
+        val jobResult = GmailForwarder("unused", StubGmailClient(emails), dropboxClient, localConfig).run(firstOfJune)
         assertThat(jobResult, equalTo("No need to run - day of month is 1, only running on day 2, 11, 12, 31 of each month"))
     }
 
