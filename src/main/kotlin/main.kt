@@ -8,6 +8,6 @@ fun main(args: Array<String>) {
 
     jobs.forEach { job ->
         val result = job.run(ZonedDateTime.now(), job.daysOfMonthToRun())
-        println(result)
+        println("${job.javaClass.simpleName}: $result")
     }
 }
