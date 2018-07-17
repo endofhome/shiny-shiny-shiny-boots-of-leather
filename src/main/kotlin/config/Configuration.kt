@@ -32,12 +32,13 @@ data class Configuration (private val values: Map<RequiredConfig, String?>, val 
             val nullValues = provided.filter { it.value == null }.keys
             val missingConfig = completelyMissing + nullValues
             throw ConfigurationException(
-                    "Config value${pluralise(missingConfig)} required for " +
-                            "${missingConfig.joinToString(", ") { it.name }} " +
-                            "but not found."
+                    "Config value${pluralise(missingConfig)} required but not found:".newlines(2) +
+                    missingConfig.joinToString(osNewline) { it.name }.newlines(1)
             )
         }
     }
 }
 
+val osNewline: String = System.getProperty("line.separator")
+fun String.newlines(numberOf: Int) = this + (1..numberOf).map { osNewline }.joinToString("")
 class ConfigurationException(override val message: String) : RuntimeException()
