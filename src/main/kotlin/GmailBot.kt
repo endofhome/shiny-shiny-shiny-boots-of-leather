@@ -50,7 +50,7 @@ fun main(args: Array<String>) {
     val gmail = AuthorisedGmailProvider(4000, GmailBot.appName, config).gmail()
     val gmailer = HttpGmailClient(gmail)
     val dropboxClient = HttpDropboxClient(GmailBot.appName, config.get(KOTLIN_GMAILER_DROPBOX_ACCESS_TOKEN))
-    val runOnDays = config.getAsListOf<Int>(KOTLIN_GMAILER_RUN_ON_DAYS)
+    val runOnDays = config.getAsListOfInt(KOTLIN_GMAILER_RUN_ON_DAYS)
     val result = GmailBot(gmailer, dropboxClient, config).run(ZonedDateTime.now(),  runOnDays)
     println(result)
 }
