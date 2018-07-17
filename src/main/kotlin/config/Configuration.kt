@@ -3,7 +3,7 @@ package config
 import jobs.GmailForwarder.Companion.RequiredConfig
 import java.nio.file.Path
 
-class Configuration (private val values: Map<RequiredConfig, String?>, val configDir: Path?) {
+data class Configuration (private val values: Map<RequiredConfig, String?>, val configDir: Path?) {
 
     init {
         validate(RequiredConfig.values().toSet(), values)

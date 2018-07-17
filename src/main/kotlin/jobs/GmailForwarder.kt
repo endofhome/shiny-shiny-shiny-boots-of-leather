@@ -49,7 +49,7 @@ import javax.mail.internet.InternetAddress
 class GmailForwarder(override val jobName: String, private val gmailClient: SimpleGmailClient, private val dropboxClient: SimpleDropboxClient, private val config: Configuration): Job {
 
         companion object: JobCompanion {
-
+            
             enum class RequiredConfig {
                 KOTLIN_GMAILER_JOB_NAME,
                 KOTLIN_GMAILER_GMAIL_CLIENT_SECRET,
@@ -75,18 +75,16 @@ class GmailForwarder(override val jobName: String, private val gmailClient: Simp
             }
         }
 
-    override fun run(now: ZonedDateTime, daysOfMonthToRun: List<Int>): String {
+    override fun run(now: ZonedDateTime): String {
         val appStateMetadata = FlatFileApplicationStateMetadata("/gmailer_state.json", GmailerState::class.java)
         val datastore: Datastore<GmailerState> = DropboxDatastore(dropboxClient, appStateMetadata)
-        val shouldRunNow = daysOfMonthToRun.includes(now.dayOfMonth)
+        val shouldRunNow = config.getAsListOfInt(KOTLIN_GMAILER_RUN_ON_DAYS).includes(now.dayOfMonth)
 
         return shouldRunNow.flatMap { datastore.currentApplicationState() }
                            .flatMap { applicationState: GmailerState -> shouldTryToSend(applicationState, now) }
                            .map { emailBytes -> tryToSendEmail(datastore, emailBytes) }
                            .orElse { error -> error.message }
     }
-
-    override fun daysOfMonthToRun() = config.getAsListOfInt(KOTLIN_GMAILER_RUN_ON_DAYS)
 
     private fun shouldTryToSend(applicationState: GmailerState, now: ZonedDateTime): Result<Err, ByteArray> {
         fun ZonedDateTime.yearMonth(): YearMonth = YearMonth.from(this)

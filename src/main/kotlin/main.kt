@@ -7,7 +7,7 @@ fun main(args: Array<String>) {
     val jobs: List<Job> = listOf(gmailForwarder)
 
     jobs.forEach { job ->
-        val result = job.run(ZonedDateTime.now(), job.daysOfMonthToRun())
+        val result = job.run(ZonedDateTime.now())
         println("${job.jobName}: $result")
     }
 }
