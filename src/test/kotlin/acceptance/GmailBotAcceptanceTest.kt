@@ -1,7 +1,5 @@
 package acceptance
 
-import GmailBot
-import GmailBot.Companion.RequiredConfig
 import com.google.api.services.gmail.model.Message
 import com.natpryce.hamkrest.assertion.assertThat
 import com.natpryce.hamkrest.equalTo
@@ -11,6 +9,8 @@ import datastore.ErrorDownloadingFileFromDropbox
 import datastore.SimpleDropboxClient
 import gmail.CouldNotSendEmail
 import gmail.SimpleGmailClient
+import jobs.GmailBot
+import jobs.GmailBot.Companion.RequiredConfig
 import org.junit.Test
 import result.Result
 import result.Result.Failure

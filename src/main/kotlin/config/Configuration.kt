@@ -1,6 +1,6 @@
 package config
 
-import GmailBot.Companion.RequiredConfig
+import jobs.GmailBot.Companion.RequiredConfig
 import java.nio.file.Path
 
 class Configuration (private val values: Map<RequiredConfig, String?>, val configDir: Path?) {

@@ -1,28 +1,22 @@
-import GmailBot.Companion.RequiredConfig
-import GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_BCC_ADDRESS
-import GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_DROPBOX_ACCESS_TOKEN
-import GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_FROM_ADDRESS
-import GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_FROM_FULLNAME
-import GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_GMAIL_QUERY
-import GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_RUN_ON_DAYS
-import GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_TO_ADDRESS
-import GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_TO_FULLNAME
-import GmailBot.Companion.RequiredConfig.values
+package jobs
+
 import com.google.api.services.gmail.model.Message
 import config.Configuration
-import config.Configurator
 import datastore.Datastore
 import datastore.DropboxDatastore
 import datastore.FlatFileApplicationStateMetadata
-import datastore.HttpDropboxClient
 import datastore.SimpleDropboxClient
-import gmail.AuthorisedGmailProvider
 import gmail.GmailerState
-import gmail.HttpGmailClient
 import gmail.SimpleGmailClient
 import gmail.encode
 import gmail.replaceRecipient
 import gmail.replaceSender
+import jobs.GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_BCC_ADDRESS
+import jobs.GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_FROM_ADDRESS
+import jobs.GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_FROM_FULLNAME
+import jobs.GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_GMAIL_QUERY
+import jobs.GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_TO_ADDRESS
+import jobs.GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_TO_FULLNAME
 import result.AnEmailAlreadySentThisMonth
 import result.CouldNotGetRawContentForEmail
 import result.Err
@@ -38,22 +32,10 @@ import result.UnknownError
 import result.flatMap
 import result.map
 import result.orElse
-import java.nio.file.Paths
 import java.time.YearMonth
 import java.time.ZonedDateTime
 import javax.mail.Message.RecipientType
 import javax.mail.internet.InternetAddress
-
-fun main(args: Array<String>) {
-    val requiredConfig: List<RequiredConfig> = values().toList()
-    val config = Configurator(requiredConfig, Paths.get("credentials"))
-    val gmail = AuthorisedGmailProvider(4000, GmailBot.appName, config).gmail()
-    val gmailer = HttpGmailClient(gmail)
-    val dropboxClient = HttpDropboxClient(GmailBot.appName, config.get(KOTLIN_GMAILER_DROPBOX_ACCESS_TOKEN))
-    val runOnDays = config.getAsListOfInt(KOTLIN_GMAILER_RUN_ON_DAYS)
-    val result = GmailBot(gmailer, dropboxClient, config).run(ZonedDateTime.now(),  runOnDays)
-    println(result)
-}
 
 class GmailBot(private val gmailClient: SimpleGmailClient, private val dropboxClient: SimpleDropboxClient, private val config: Configuration) {
 
@@ -115,16 +97,11 @@ class GmailBot(private val gmailClient: SimpleGmailClient, private val dropboxCl
     }
 
     private fun tryToSendEmail(datastore: Datastore<GmailerState>, rawMessageToSend: ByteArray): String {
-        val fromEmailAddress = config.get(KOTLIN_GMAILER_FROM_ADDRESS)
-        val fromFullName = config.get(KOTLIN_GMAILER_FROM_FULLNAME)
-        val toEmailAddress = config.get(KOTLIN_GMAILER_TO_ADDRESS)
-        val toFullName = config.get(KOTLIN_GMAILER_TO_FULLNAME)
-        val bccEmailAddress = config.get(KOTLIN_GMAILER_BCC_ADDRESS)
 
         val clonedMessageWithNewHeaders = gmailClient.newMessageFrom(rawMessageToSend).run {
-            replaceSender(InternetAddress(fromEmailAddress, fromFullName))
-            replaceRecipient(InternetAddress(toEmailAddress, toFullName), RecipientType.TO)
-            replaceRecipient(InternetAddress(bccEmailAddress), RecipientType.BCC)
+            replaceSender(InternetAddress(config.get(KOTLIN_GMAILER_FROM_ADDRESS), config.get(KOTLIN_GMAILER_FROM_FULLNAME)))
+            replaceRecipient(InternetAddress(config.get(KOTLIN_GMAILER_TO_ADDRESS), config.get(KOTLIN_GMAILER_TO_FULLNAME)), RecipientType.TO)
+            replaceRecipient(InternetAddress(config.get(KOTLIN_GMAILER_BCC_ADDRESS)), RecipientType.BCC)
             encode()
         }
 

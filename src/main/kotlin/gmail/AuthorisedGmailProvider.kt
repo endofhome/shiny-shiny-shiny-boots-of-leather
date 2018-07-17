@@ -1,8 +1,5 @@
 package gmail
 
-import GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_GMAIL_ACCESS_TOKEN
-import GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_GMAIL_CLIENT_SECRET
-import GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_GMAIL_REFRESH_TOKEN
 import com.google.api.client.auth.oauth2.Credential
 import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp
 import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver
@@ -16,6 +13,9 @@ import com.google.api.client.util.store.FileDataStoreFactory
 import com.google.api.services.gmail.Gmail
 import com.google.api.services.gmail.GmailScopes
 import config.Configuration
+import jobs.GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_GMAIL_ACCESS_TOKEN
+import jobs.GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_GMAIL_CLIENT_SECRET
+import jobs.GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_GMAIL_REFRESH_TOKEN
 
 class AuthorisedGmailProvider(port: Int, private val appName: String, private val config: Configuration) {
 
