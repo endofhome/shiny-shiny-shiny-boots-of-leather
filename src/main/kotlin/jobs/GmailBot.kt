@@ -2,11 +2,15 @@ package jobs
 
 import com.google.api.services.gmail.model.Message
 import config.Configuration
+import config.Configurator
 import datastore.Datastore
 import datastore.DropboxDatastore
 import datastore.FlatFileApplicationStateMetadata
+import datastore.HttpDropboxClient
 import datastore.SimpleDropboxClient
+import gmail.AuthorisedGmailProvider
 import gmail.GmailerState
+import gmail.HttpGmailClient
 import gmail.SimpleGmailClient
 import gmail.encode
 import gmail.replaceRecipient
@@ -15,6 +19,7 @@ import jobs.GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_BCC_ADDRESS
 import jobs.GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_FROM_ADDRESS
 import jobs.GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_FROM_FULLNAME
 import jobs.GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_GMAIL_QUERY
+import jobs.GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_RUN_ON_DAYS
 import jobs.GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_TO_ADDRESS
 import jobs.GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_TO_FULLNAME
 import result.AnEmailAlreadySentThisMonth
@@ -32,15 +37,16 @@ import result.UnknownError
 import result.flatMap
 import result.map
 import result.orElse
+import java.nio.file.Paths
 import java.time.YearMonth
 import java.time.ZonedDateTime
 import javax.mail.Message.RecipientType
 import javax.mail.internet.InternetAddress
 
-class GmailBot(private val gmailClient: SimpleGmailClient, private val dropboxClient: SimpleDropboxClient, private val config: Configuration) {
+class GmailBot(private val gmailClient: SimpleGmailClient, private val dropboxClient: SimpleDropboxClient, private val config: Configuration): Job {
 
-        companion object {
-            const val appName = "kotlin-gmailer-bot"
+        companion object: JobCompanion {
+            private const val jobName = "kotlin-gmailer-bot"
 
             enum class RequiredConfig {
                 KOTLIN_GMAILER_GMAIL_CLIENT_SECRET,
@@ -55,9 +61,18 @@ class GmailBot(private val gmailClient: SimpleGmailClient, private val dropboxCl
                 KOTLIN_GMAILER_TO_FULLNAME,
                 KOTLIN_GMAILER_BCC_ADDRESS
             }
+
+            override fun initialise(): GmailBot {
+                val requiredConfig: List<GmailBot.Companion.RequiredConfig> = GmailBot.Companion.RequiredConfig.values().toList()
+                val config = Configurator(requiredConfig, Paths.get("credentials"))
+                val gmail = AuthorisedGmailProvider(4000, jobName, config).gmail()
+                val gmailer = HttpGmailClient(gmail)
+                val dropboxClient = HttpDropboxClient(jobName, config.get(RequiredConfig.KOTLIN_GMAILER_DROPBOX_ACCESS_TOKEN))
+                return GmailBot(gmailer, dropboxClient, config)
+            }
         }
 
-    fun run(now: ZonedDateTime, daysOfMonthToRun: List<Int>): String {
+    override fun run(now: ZonedDateTime, daysOfMonthToRun: List<Int>): String {
         val appStateMetadata = FlatFileApplicationStateMetadata("/gmailer_state.json", GmailerState::class.java)
         val datastore: Datastore<GmailerState> = DropboxDatastore(dropboxClient, appStateMetadata)
         val shouldRunNow = daysOfMonthToRun.includes(now.dayOfMonth)
@@ -67,6 +82,8 @@ class GmailBot(private val gmailClient: SimpleGmailClient, private val dropboxCl
                            .map { emailBytes -> tryToSendEmail(datastore, emailBytes) }
                            .orElse { error -> error.message }
     }
+
+    override fun daysOfMonthToRun() = config.getAsListOfInt(KOTLIN_GMAILER_RUN_ON_DAYS)
 
     private fun shouldTryToSend(applicationState: GmailerState, now: ZonedDateTime): Result<Err, ByteArray> {
         fun ZonedDateTime.yearMonth(): YearMonth = YearMonth.from(this)
