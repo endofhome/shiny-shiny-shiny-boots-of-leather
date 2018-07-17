@@ -10,6 +10,6 @@ script:
 - "./gradlew check --info"
 deploy:
   provider: heroku
-  app: silvermere-command-control
+  app: shiny-shiny-shiny-boots
   api_key:
     secure: sS6uB60ddlD2/rtfjh547kzk62j3FnSOIAF20YBSJjElfyj29ezYLXh8a/q+50nNTDgfwTowpOiZvuiLp1QAlVcnz51+O56Hva0lw8qlK5SX2ww5JCtvFkKu5lsoCotQbjKLtb/3YHRtXVcnaFJFW7bIYRyp+xpALWDZWR7EUEXkbfumppeQ5kAQKvscdbDI7ZJpnTXeSqtdr/HzMKaxAp6nxi+JOQaa+3CXmqwQcWWueVVw9E2hVcljNEmH/cwQHeEizpqWJi7TwB7N+IGuRGcjiB2KJON2dRAP89APlan6CdORVexnafAUk1+/sD0bPGd/p36QHSaEkazlvaQzqObGhbIluFd6Vp/ke0W2j3yVbL+VkPKT0Oi5SdqVHKiQiwYQLzgQQlEEjZYwGI948abBtXmyyCf2SSOnv9rcUcKDntfnCn9pHk3BXSMwiqmvn2ctuxhXCRz1kSE9hw3s98UpfWvFHNM+iI4txaoECnDcA8BplDu1Xg/CrxxbVGttXnbdOpQZHzs69yyuSn+POmERB/tcXMntgxzEj7vLUUpOxH4Y9RXRH44L26vLqbJZZF7k31rB8Jwb0i9T9N2kKN3viSc0MDSC/F1Jn0iejLgdCC6G0by1B0r8pmHMvNzYjlA8ualulinK4Gt/BbYBgQLu0/Uk7czgyYP5sqYkx40=
