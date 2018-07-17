@@ -12,14 +12,14 @@ class Configuration (private val values: Map<RequiredConfig, String?>, val confi
     fun get(requiredConfig: RequiredConfig): String = try {
         this.values[requiredConfig]!!
     } catch (e: Exception) {
-        throw ConfigurationException("${requiredConfig} was not available during get")
+        throw ConfigurationException("$requiredConfig was not available during get")
     }
 
     @Suppress("UNCHECKED_CAST")
-    fun <T> getAsListOf(requiredConfig: RequiredConfig, outputClass: Class<T>, delimiter: Char = ','): List<T> = try {
+    inline fun <reified T> getAsListOf(requiredConfig: RequiredConfig, delimiter: Char = ','): List<T> = try {
         this.get(requiredConfig).split(delimiter).map { it.trim() as T }
     } catch (e: Exception) {
-        throw ConfigurationException("It was not safe to return $requiredConfig as a list of $outputClass")
+        throw ConfigurationException("It was not safe to return $requiredConfig as a list of ${T::class.java}")
     }
 
     private fun validate(required: Set<RequiredConfig>, provided: Map<RequiredConfig, String?>) {
