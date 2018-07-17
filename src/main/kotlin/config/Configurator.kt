@@ -1,6 +1,6 @@
 package config
 
-import jobs.GmailBot.Companion.RequiredConfig
+import jobs.GmailForwarder.Companion.RequiredConfig
 import java.io.File
 import java.nio.file.Path
 

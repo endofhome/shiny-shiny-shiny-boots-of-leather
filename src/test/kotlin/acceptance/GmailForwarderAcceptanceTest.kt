@@ -9,8 +9,8 @@ import datastore.ErrorDownloadingFileFromDropbox
 import datastore.SimpleDropboxClient
 import gmail.CouldNotSendEmail
 import gmail.SimpleGmailClient
-import jobs.GmailBot
-import jobs.GmailBot.Companion.RequiredConfig
+import jobs.GmailForwarder
+import jobs.GmailForwarder.Companion.RequiredConfig
 import org.junit.Test
 import result.Result
 import result.Result.Failure
@@ -18,7 +18,7 @@ import result.Result.Success
 import java.time.ZoneOffset.UTC
 import java.time.ZonedDateTime
 
-class GmailBotAcceptanceTest {
+class GmailForwarderAcceptanceTest {
 
     private val time = ZonedDateTime.of(2018, 6, 1, 0, 0, 0, 0, UTC)
     private val config = Configuration(RequiredConfig.values().toList().associate { it to "x@y" }, null)
@@ -36,7 +36,7 @@ class GmailBotAcceptanceTest {
 
         val dropboxClient = StubDropboxClient(listOf(stateFile))
         val emails = listOf(Message().setRaw("New email data"))
-        val jobResult = GmailBot(StubGmailClient(emails), dropboxClient, config).run(time, listOf(1))
+        val jobResult = GmailForwarder("unused", StubGmailClient(emails), dropboxClient, config).run(time, listOf(1))
         assertThat(jobResult, equalTo(
                 "New email has been sent\n" +
                 "Current state has been stored in Dropbox")
@@ -56,7 +56,7 @@ class GmailBotAcceptanceTest {
 
         val dropboxClient = StubDropboxClient(listOf(stateFile))
         val emails = listOf(Message().setRaw("New email data"))
-        val jobResult = GmailBot(StubGmailClient(emails), dropboxClient, config).run(time, listOf(1))
+        val jobResult = GmailForwarder("unused", StubGmailClient(emails), dropboxClient, config).run(time, listOf(1))
         assertThat(jobResult, equalTo("Exiting, email has already been sent for June 2018"))
     }
 
@@ -73,7 +73,7 @@ class GmailBotAcceptanceTest {
 
         val dropboxClient = StubDropboxClient(listOf(stateFile))
         val emails = listOf(Message().setRaw("Last month's email data"))
-        val jobResult = GmailBot(StubGmailClient(emails), dropboxClient, config).run(time, listOf(1))
+        val jobResult = GmailForwarder("unused", StubGmailClient(emails), dropboxClient, config).run(time, listOf(1))
         assertThat(jobResult, equalTo("Exiting due to invalid state, previous email appears to have been sent in the future"))
     }
 
@@ -100,7 +100,7 @@ class GmailBotAcceptanceTest {
           |     ________________________________
           |     Already sent this one
           """.trimMargin()))
-        val jobResult = GmailBot(StubGmailClient(emails), dropboxClient, config).run(time, listOf(1))
+        val jobResult = GmailForwarder("unused", StubGmailClient(emails), dropboxClient, config).run(time, listOf(1))
         assertThat(jobResult, equalTo("Exiting as this exact email has already been sent"))
     }
 
@@ -118,7 +118,7 @@ class GmailBotAcceptanceTest {
         val dropboxClient = StubDropboxClient(listOf(stateFile))
         val emails = listOf(Message().setRaw("New email data"))
         val secondOfJune = ZonedDateTime.of(2018, 6, 1, 0, 0, 0, 0, UTC)
-        val jobResult = GmailBot(StubGmailClient(emails), dropboxClient, config).run(secondOfJune, listOf(2, 11, 12, 31))
+        val jobResult = GmailForwarder("unused", StubGmailClient(emails), dropboxClient, config).run(secondOfJune, listOf(2, 11, 12, 31))
         assertThat(jobResult, equalTo("No need to run: day of month is: 1, only running on day 2, 11, 12, 31 of each month"))
     }
 
@@ -135,7 +135,7 @@ class GmailBotAcceptanceTest {
 
         val dropboxClient = StubDropboxClient(listOf(stateFile))
         val emails = listOf(Message().setRaw("New email data"))
-        val jobResult = GmailBot(StubGmailClientThatCannotSend(emails), dropboxClient, config).run(time, listOf(1))
+        val jobResult = GmailForwarder("unused", StubGmailClientThatCannotSend(emails), dropboxClient, config).run(time, listOf(1))
         assertThat(jobResult, equalTo("Error - could not send email/s"))
     }
 
@@ -152,7 +152,7 @@ class GmailBotAcceptanceTest {
 
         val dropboxClient = StubDropboxClientThatCannotStore(listOf(stateFile))
         val emails = listOf(Message().setRaw("New email data"))
-        val jobResult = GmailBot(StubGmailClient(emails), dropboxClient, config).run(time, listOf(1))
+        val jobResult = GmailForwarder("unused", StubGmailClient(emails), dropboxClient, config).run(time, listOf(1))
         assertThat(jobResult, equalTo("New email has been sent\nError - could not store state in Dropbox"))
     }
 
@@ -169,7 +169,7 @@ class GmailBotAcceptanceTest {
 
         val dropboxClient = StubDropboxClient(listOf(stateFile))
         val emails = listOf(Message().setRaw("New email data"))
-        val jobResult = GmailBot(StubGmailClientThatCannotRetrieveRawContent(emails), dropboxClient, config).run(time, listOf(1))
+        val jobResult = GmailForwarder("unused", StubGmailClientThatCannotRetrieveRawContent(emails), dropboxClient, config).run(time, listOf(1))
         assertThat(jobResult, equalTo("Error - could not get raw message content for email"))
     }
 
@@ -185,7 +185,7 @@ class GmailBotAcceptanceTest {
         val stateFile = FileLike("/gmailer_state.json", state)
 
         val dropboxClient = StubDropboxClient(listOf(stateFile))
-        val jobResult = GmailBot(StubGmailClientThatReturnsNoMatches(emptyList()), dropboxClient, config).run(time, listOf(1))
+        val jobResult = GmailForwarder("unused", StubGmailClientThatReturnsNoMatches(emptyList()), dropboxClient, config).run(time, listOf(1))
         assertThat(jobResult, equalTo("No matching results for query: 'x@y'"))
     }
 
@@ -193,7 +193,7 @@ class GmailBotAcceptanceTest {
     fun `Error message is provided when state file does not exist in Dropbox`() {
         val dropboxClient = StubDropboxClient(emptyList())
         val emails = listOf(Message().setRaw("New email data"))
-        val jobResult = GmailBot(StubGmailClient(emails), dropboxClient, config).run(time, listOf(1))
+        val jobResult = GmailForwarder("unused", StubGmailClient(emails), dropboxClient, config).run(time, listOf(1))
         assertThat(jobResult, equalTo("Error downloading file /gmailer_state.json from Dropbox"))
     }
 }

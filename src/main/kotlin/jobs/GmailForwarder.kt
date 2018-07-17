@@ -15,13 +15,16 @@ import gmail.SimpleGmailClient
 import gmail.encode
 import gmail.replaceRecipient
 import gmail.replaceSender
-import jobs.GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_BCC_ADDRESS
-import jobs.GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_FROM_ADDRESS
-import jobs.GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_FROM_FULLNAME
-import jobs.GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_GMAIL_QUERY
-import jobs.GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_RUN_ON_DAYS
-import jobs.GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_TO_ADDRESS
-import jobs.GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_TO_FULLNAME
+import jobs.GmailForwarder.Companion.RequiredConfig.KOTLIN_GMAILER_BCC_ADDRESS
+import jobs.GmailForwarder.Companion.RequiredConfig.KOTLIN_GMAILER_DROPBOX_ACCESS_TOKEN
+import jobs.GmailForwarder.Companion.RequiredConfig.KOTLIN_GMAILER_FROM_ADDRESS
+import jobs.GmailForwarder.Companion.RequiredConfig.KOTLIN_GMAILER_FROM_FULLNAME
+import jobs.GmailForwarder.Companion.RequiredConfig.KOTLIN_GMAILER_GMAIL_QUERY
+import jobs.GmailForwarder.Companion.RequiredConfig.KOTLIN_GMAILER_JOB_NAME
+import jobs.GmailForwarder.Companion.RequiredConfig.KOTLIN_GMAILER_RUN_ON_DAYS
+import jobs.GmailForwarder.Companion.RequiredConfig.KOTLIN_GMAILER_TO_ADDRESS
+import jobs.GmailForwarder.Companion.RequiredConfig.KOTLIN_GMAILER_TO_FULLNAME
+import jobs.GmailForwarder.Companion.RequiredConfig.values
 import result.AnEmailAlreadySentThisMonth
 import result.CouldNotGetRawContentForEmail
 import result.Err
@@ -43,12 +46,12 @@ import java.time.ZonedDateTime
 import javax.mail.Message.RecipientType
 import javax.mail.internet.InternetAddress
 
-class GmailBot(private val gmailClient: SimpleGmailClient, private val dropboxClient: SimpleDropboxClient, private val config: Configuration): Job {
+class GmailForwarder(override val jobName: String, private val gmailClient: SimpleGmailClient, private val dropboxClient: SimpleDropboxClient, private val config: Configuration): Job {
 
         companion object: JobCompanion {
-            private const val jobName = "kotlin-gmailer-bot"
 
             enum class RequiredConfig {
+                KOTLIN_GMAILER_JOB_NAME,
                 KOTLIN_GMAILER_GMAIL_CLIENT_SECRET,
                 KOTLIN_GMAILER_GMAIL_ACCESS_TOKEN,
                 KOTLIN_GMAILER_GMAIL_REFRESH_TOKEN,
@@ -62,13 +65,13 @@ class GmailBot(private val gmailClient: SimpleGmailClient, private val dropboxCl
                 KOTLIN_GMAILER_BCC_ADDRESS
             }
 
-            override fun initialise(): GmailBot {
-                val requiredConfig: List<GmailBot.Companion.RequiredConfig> = GmailBot.Companion.RequiredConfig.values().toList()
+            override fun initialise(): GmailForwarder {
+                val requiredConfig: List<GmailForwarder.Companion.RequiredConfig> = values().toList()
                 val config = Configurator(requiredConfig, Paths.get("credentials"))
-                val gmail = AuthorisedGmailProvider(4000, jobName, config).gmail()
+                val gmail = AuthorisedGmailProvider(4000, config.get(KOTLIN_GMAILER_JOB_NAME), config).gmail()
                 val gmailer = HttpGmailClient(gmail)
-                val dropboxClient = HttpDropboxClient(jobName, config.get(RequiredConfig.KOTLIN_GMAILER_DROPBOX_ACCESS_TOKEN))
-                return GmailBot(gmailer, dropboxClient, config)
+                val dropboxClient = HttpDropboxClient(config.get(KOTLIN_GMAILER_JOB_NAME), config.get(KOTLIN_GMAILER_DROPBOX_ACCESS_TOKEN))
+                return GmailForwarder(config.get(KOTLIN_GMAILER_JOB_NAME), gmailer, dropboxClient, config)
             }
         }
 

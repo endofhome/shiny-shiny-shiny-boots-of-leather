@@ -13,9 +13,9 @@ import com.google.api.client.util.store.FileDataStoreFactory
 import com.google.api.services.gmail.Gmail
 import com.google.api.services.gmail.GmailScopes
 import config.Configuration
-import jobs.GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_GMAIL_ACCESS_TOKEN
-import jobs.GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_GMAIL_CLIENT_SECRET
-import jobs.GmailBot.Companion.RequiredConfig.KOTLIN_GMAILER_GMAIL_REFRESH_TOKEN
+import jobs.GmailForwarder.Companion.RequiredConfig.KOTLIN_GMAILER_GMAIL_ACCESS_TOKEN
+import jobs.GmailForwarder.Companion.RequiredConfig.KOTLIN_GMAILER_GMAIL_CLIENT_SECRET
+import jobs.GmailForwarder.Companion.RequiredConfig.KOTLIN_GMAILER_GMAIL_REFRESH_TOKEN
 
 class AuthorisedGmailProvider(port: Int, private val appName: String, private val config: Configuration) {
 
