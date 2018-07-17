@@ -13,9 +13,9 @@ import com.google.api.client.util.store.FileDataStoreFactory
 import com.google.api.services.gmail.Gmail
 import com.google.api.services.gmail.GmailScopes
 import config.Configuration
-import jobs.GmailForwarder.Companion.RequiredConfig.KOTLIN_GMAILER_GMAIL_ACCESS_TOKEN
-import jobs.GmailForwarder.Companion.RequiredConfig.KOTLIN_GMAILER_GMAIL_CLIENT_SECRET
-import jobs.GmailForwarder.Companion.RequiredConfig.KOTLIN_GMAILER_GMAIL_REFRESH_TOKEN
+import jobs.GmailForwarder.Companion.RequiredConfig.GMAIL_FORWARDER_GMAIL_ACCESS_TOKEN
+import jobs.GmailForwarder.Companion.RequiredConfig.GMAIL_FORWARDER_GMAIL_CLIENT_SECRET
+import jobs.GmailForwarder.Companion.RequiredConfig.GMAIL_FORWARDER_GMAIL_REFRESH_TOKEN
 
 class AuthorisedGmailProvider(port: Int, private val appName: String, private val config: Configuration) {
 
@@ -35,20 +35,20 @@ class AuthorisedGmailProvider(port: Int, private val appName: String, private va
     }
 
     private fun credentialFromConfig(): Credential {
-        val clientSecret = config.get(KOTLIN_GMAILER_GMAIL_CLIENT_SECRET)
+        val clientSecret = config.get(GMAIL_FORWARDER_GMAIL_CLIENT_SECRET)
         val clientSecrets: GoogleClientSecrets = GoogleClientSecrets.load(jsonFactory, clientSecret.reader())
         val credential = GoogleCredential.Builder()
                                                          .setTransport(httpTransport)
                                                          .setJsonFactory(jsonFactory)
                                                          .setClientSecrets(clientSecrets)
                                                          .build()
-        credential.accessToken = config.get(KOTLIN_GMAILER_GMAIL_ACCESS_TOKEN)
-        credential.refreshToken = config.get(KOTLIN_GMAILER_GMAIL_REFRESH_TOKEN)
+        credential.accessToken = config.get(GMAIL_FORWARDER_GMAIL_ACCESS_TOKEN)
+        credential.refreshToken = config.get(GMAIL_FORWARDER_GMAIL_REFRESH_TOKEN)
         return credential
     }
 
     private fun newCredentials(httpTransport: NetHttpTransport, port: Int): Credential {
-        val clientSecret = config.get(KOTLIN_GMAILER_GMAIL_CLIENT_SECRET)
+        val clientSecret = config.get(GMAIL_FORWARDER_GMAIL_CLIENT_SECRET)
         val credentialsFolder = config.configDir?.toFile()
         val scopes = listOf(GmailScopes.MAIL_GOOGLE_COM)
         val clientSecrets: GoogleClientSecrets = GoogleClientSecrets.load(jsonFactory, clientSecret.reader())

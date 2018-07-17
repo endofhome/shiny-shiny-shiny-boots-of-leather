@@ -23,10 +23,10 @@ class GmailForwarderAcceptanceTest {
     private val time = ZonedDateTime.of(2018, 6, 1, 0, 0, 0, 0, UTC)
     private val baseConfigValues = RequiredConfig.values().associate { it to "unused" }.toMutableMap()
     private val configValues = baseConfigValues.apply {
-        set(RequiredConfig.KOTLIN_GMAILER_RUN_ON_DAYS, "1")
-        set(RequiredConfig.KOTLIN_GMAILER_TO_ADDRESS, "jim@example.com")
-        set(RequiredConfig.KOTLIN_GMAILER_FROM_ADDRESS, "bob@example.com")
-        set(RequiredConfig.KOTLIN_GMAILER_BCC_ADDRESS, "fred@example.com")
+        set(RequiredConfig.GMAIL_FORWARDER_RUN_ON_DAYS, "1")
+        set(RequiredConfig.GMAIL_FORWARDER_TO_ADDRESS, "jim@example.com")
+        set(RequiredConfig.GMAIL_FORWARDER_FROM_ADDRESS, "bob@example.com")
+        set(RequiredConfig.GMAIL_FORWARDER_BCC_ADDRESS, "fred@example.com")
     }.toMap()
     private val config = Configuration(configValues, null)
 
@@ -127,7 +127,7 @@ class GmailForwarderAcceptanceTest {
         val firstOfJune = ZonedDateTime.of(2018, 6, 1, 0, 0, 0, 0, UTC)
         val localConfig = config.copy(
                 values = configValues.toMutableMap()
-                                     .apply { set(RequiredConfig.KOTLIN_GMAILER_RUN_ON_DAYS, "2, 11,12, 31 ") }
+                                     .apply { set(RequiredConfig.GMAIL_FORWARDER_RUN_ON_DAYS, "2, 11,12, 31 ") }
                                      .toMap()
         )
         val jobResult = GmailForwarder("unused", StubGmailClient(emails), dropboxClient, localConfig).run(firstOfJune)
@@ -199,7 +199,7 @@ class GmailForwarderAcceptanceTest {
         val dropboxClient = StubDropboxClient(listOf(stateFile))
         val localConfig = config.copy(
                 values = configValues.toMutableMap()
-                                     .apply { set(RequiredConfig.KOTLIN_GMAILER_GMAIL_QUERY, "some search query") }
+                                     .apply { set(RequiredConfig.GMAIL_FORWARDER_GMAIL_QUERY, "some search query") }
                                      .toMap()
         )
         val jobResult = GmailForwarder("unused", StubGmailClientThatReturnsNoMatches(emptyList()), dropboxClient, localConfig).run(time)

@@ -15,15 +15,15 @@ import gmail.SimpleGmailClient
 import gmail.encode
 import gmail.replaceRecipient
 import gmail.replaceSender
-import jobs.GmailForwarder.Companion.RequiredConfig.KOTLIN_GMAILER_BCC_ADDRESS
-import jobs.GmailForwarder.Companion.RequiredConfig.KOTLIN_GMAILER_DROPBOX_ACCESS_TOKEN
-import jobs.GmailForwarder.Companion.RequiredConfig.KOTLIN_GMAILER_FROM_ADDRESS
-import jobs.GmailForwarder.Companion.RequiredConfig.KOTLIN_GMAILER_FROM_FULLNAME
-import jobs.GmailForwarder.Companion.RequiredConfig.KOTLIN_GMAILER_GMAIL_QUERY
-import jobs.GmailForwarder.Companion.RequiredConfig.KOTLIN_GMAILER_JOB_NAME
-import jobs.GmailForwarder.Companion.RequiredConfig.KOTLIN_GMAILER_RUN_ON_DAYS
-import jobs.GmailForwarder.Companion.RequiredConfig.KOTLIN_GMAILER_TO_ADDRESS
-import jobs.GmailForwarder.Companion.RequiredConfig.KOTLIN_GMAILER_TO_FULLNAME
+import jobs.GmailForwarder.Companion.RequiredConfig.GMAIL_FORWARDER_BCC_ADDRESS
+import jobs.GmailForwarder.Companion.RequiredConfig.GMAIL_FORWARDER_DROPBOX_ACCESS_TOKEN
+import jobs.GmailForwarder.Companion.RequiredConfig.GMAIL_FORWARDER_FROM_ADDRESS
+import jobs.GmailForwarder.Companion.RequiredConfig.GMAIL_FORWARDER_FROM_FULLNAME
+import jobs.GmailForwarder.Companion.RequiredConfig.GMAIL_FORWARDER_GMAIL_QUERY
+import jobs.GmailForwarder.Companion.RequiredConfig.GMAIL_FORWARDER_JOB_NAME
+import jobs.GmailForwarder.Companion.RequiredConfig.GMAIL_FORWARDER_RUN_ON_DAYS
+import jobs.GmailForwarder.Companion.RequiredConfig.GMAIL_FORWARDER_TO_ADDRESS
+import jobs.GmailForwarder.Companion.RequiredConfig.GMAIL_FORWARDER_TO_FULLNAME
 import jobs.GmailForwarder.Companion.RequiredConfig.values
 import result.AnEmailAlreadySentThisMonth
 import result.CouldNotGetRawContentForEmail
@@ -49,36 +49,36 @@ import javax.mail.internet.InternetAddress
 class GmailForwarder(override val jobName: String, private val gmailClient: SimpleGmailClient, private val dropboxClient: SimpleDropboxClient, private val config: Configuration): Job {
 
         companion object: JobCompanion {
-            
+
             enum class RequiredConfig {
-                KOTLIN_GMAILER_JOB_NAME,
-                KOTLIN_GMAILER_GMAIL_CLIENT_SECRET,
-                KOTLIN_GMAILER_GMAIL_ACCESS_TOKEN,
-                KOTLIN_GMAILER_GMAIL_REFRESH_TOKEN,
-                KOTLIN_GMAILER_DROPBOX_ACCESS_TOKEN,
-                KOTLIN_GMAILER_GMAIL_QUERY,
-                KOTLIN_GMAILER_RUN_ON_DAYS,
-                KOTLIN_GMAILER_FROM_ADDRESS,
-                KOTLIN_GMAILER_FROM_FULLNAME,
-                KOTLIN_GMAILER_TO_ADDRESS,
-                KOTLIN_GMAILER_TO_FULLNAME,
-                KOTLIN_GMAILER_BCC_ADDRESS
+                GMAIL_FORWARDER_JOB_NAME,
+                GMAIL_FORWARDER_GMAIL_CLIENT_SECRET,
+                GMAIL_FORWARDER_GMAIL_ACCESS_TOKEN,
+                GMAIL_FORWARDER_GMAIL_REFRESH_TOKEN,
+                GMAIL_FORWARDER_DROPBOX_ACCESS_TOKEN,
+                GMAIL_FORWARDER_GMAIL_QUERY,
+                GMAIL_FORWARDER_RUN_ON_DAYS,
+                GMAIL_FORWARDER_FROM_ADDRESS,
+                GMAIL_FORWARDER_FROM_FULLNAME,
+                GMAIL_FORWARDER_TO_ADDRESS,
+                GMAIL_FORWARDER_TO_FULLNAME,
+                GMAIL_FORWARDER_BCC_ADDRESS
             }
 
             override fun initialise(): GmailForwarder {
                 val requiredConfig: List<GmailForwarder.Companion.RequiredConfig> = values().toList()
                 val config = Configurator(requiredConfig, Paths.get("credentials"))
-                val gmail = AuthorisedGmailProvider(4000, config.get(KOTLIN_GMAILER_JOB_NAME), config).gmail()
+                val gmail = AuthorisedGmailProvider(4000, config.get(GMAIL_FORWARDER_JOB_NAME), config).gmail()
                 val gmailer = HttpGmailClient(gmail)
-                val dropboxClient = HttpDropboxClient(config.get(KOTLIN_GMAILER_JOB_NAME), config.get(KOTLIN_GMAILER_DROPBOX_ACCESS_TOKEN))
-                return GmailForwarder(config.get(KOTLIN_GMAILER_JOB_NAME), gmailer, dropboxClient, config)
+                val dropboxClient = HttpDropboxClient(config.get(GMAIL_FORWARDER_JOB_NAME), config.get(GMAIL_FORWARDER_DROPBOX_ACCESS_TOKEN))
+                return GmailForwarder(config.get(GMAIL_FORWARDER_JOB_NAME), gmailer, dropboxClient, config)
             }
         }
 
     override fun run(now: ZonedDateTime): String {
         val appStateMetadata = FlatFileApplicationStateMetadata("/gmailer_state.json", GmailerState::class.java)
         val datastore: Datastore<GmailerState> = DropboxDatastore(dropboxClient, appStateMetadata)
-        val shouldRunNow = config.getAsListOfInt(KOTLIN_GMAILER_RUN_ON_DAYS).includes(now.dayOfMonth)
+        val shouldRunNow = config.getAsListOfInt(GMAIL_FORWARDER_RUN_ON_DAYS).includes(now.dayOfMonth)
 
         return shouldRunNow.flatMap { datastore.currentApplicationState() }
                            .flatMap { applicationState: GmailerState -> shouldTryToSend(applicationState, now) }
@@ -96,7 +96,7 @@ class GmailForwarder(override val jobName: String, private val gmailClient: Simp
             return newEmailContents.contentEquals(previousEmailContents)
         }
 
-        val gmailQuery = config.get(KOTLIN_GMAILER_GMAIL_QUERY)
+        val gmailQuery = config.get(GMAIL_FORWARDER_GMAIL_QUERY)
         val searchResult = gmailClient.lastEmailForQuery(gmailQuery)
         val emailBytes = searchResult?.let {
             gmailClient.rawContentOf(searchResult)
@@ -117,9 +117,9 @@ class GmailForwarder(override val jobName: String, private val gmailClient: Simp
     private fun tryToSendEmail(datastore: Datastore<GmailerState>, rawMessageToSend: ByteArray): String {
 
         val clonedMessageWithNewHeaders = gmailClient.newMessageFrom(rawMessageToSend).run {
-            replaceSender(InternetAddress(config.get(KOTLIN_GMAILER_FROM_ADDRESS), config.get(KOTLIN_GMAILER_FROM_FULLNAME)))
-            replaceRecipient(InternetAddress(config.get(KOTLIN_GMAILER_TO_ADDRESS), config.get(KOTLIN_GMAILER_TO_FULLNAME)), RecipientType.TO)
-            replaceRecipient(InternetAddress(config.get(KOTLIN_GMAILER_BCC_ADDRESS)), RecipientType.BCC)
+            replaceSender(InternetAddress(config.get(GMAIL_FORWARDER_FROM_ADDRESS), config.get(GMAIL_FORWARDER_FROM_FULLNAME)))
+            replaceRecipient(InternetAddress(config.get(GMAIL_FORWARDER_TO_ADDRESS), config.get(GMAIL_FORWARDER_TO_FULLNAME)), RecipientType.TO)
+            replaceRecipient(InternetAddress(config.get(GMAIL_FORWARDER_BCC_ADDRESS)), RecipientType.BCC)
             encode()
         }
 
