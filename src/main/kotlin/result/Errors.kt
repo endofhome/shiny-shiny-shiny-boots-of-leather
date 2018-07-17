@@ -7,7 +7,7 @@ import java.util.Locale
 interface Err { val message: String }
 
 class NoNeedToRunAtThisTime(dayOfMonth: Int, daysOfMonthToRun: List<Int>) : Err  {
-    override val message = "No need to run: day of month is: $dayOfMonth, only running on day ${daysOfMonthToRun.joinToString(", ")} of each month"
+    override val message = "No need to run - day of month is $dayOfMonth, only running on day ${daysOfMonthToRun.joinToString(", ")} of each month"
 
 }
 class InvalidStateInFuture : Err {

@@ -119,7 +119,7 @@ class GmailForwarderAcceptanceTest {
         val emails = listOf(Message().setRaw("New email data"))
         val secondOfJune = ZonedDateTime.of(2018, 6, 1, 0, 0, 0, 0, UTC)
         val jobResult = GmailForwarder("unused", StubGmailClient(emails), dropboxClient, config).run(secondOfJune, listOf(2, 11, 12, 31))
-        assertThat(jobResult, equalTo("No need to run: day of month is: 1, only running on day 2, 11, 12, 31 of each month"))
+        assertThat(jobResult, equalTo("No need to run - day of month is 1, only running on day 2, 11, 12, 31 of each month"))
     }
 
     @Test
