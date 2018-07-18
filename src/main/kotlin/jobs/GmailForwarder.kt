@@ -3,6 +3,7 @@ package jobs
 import com.google.api.services.gmail.model.Message
 import config.Configuration
 import config.Configurator
+import config.GenericConfig
 import datastore.Datastore
 import datastore.DropboxDatastore
 import datastore.FlatFileApplicationStateMetadata
@@ -49,7 +50,7 @@ class GmailForwarder(override val jobName: String, private val gmailClient: Simp
 
         companion object: JobCompanion {
 
-            sealed class RequiredConfig : Comparable<RequiredConfig>{
+            sealed class RequiredConfig : GenericConfig {
 
                 companion object {
                     fun values() = listOf(
@@ -67,9 +68,6 @@ class GmailForwarder(override val jobName: String, private val gmailClient: Simp
                         GMAIL_FORWARDER_BCC_ADDRESS
                     )
                 }
-
-                override fun compareTo(other: RequiredConfig) = if (this.name > other.name) 1 else 0
-                val name: String = this.javaClass.simpleName
 
                 object GMAIL_FORWARDER_JOB_NAME : RequiredConfig()
                 object GMAIL_FORWARDER_GMAIL_CLIENT_SECRET : RequiredConfig()

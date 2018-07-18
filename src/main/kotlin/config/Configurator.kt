@@ -20,6 +20,12 @@ val getFromEnvVar = fun (requiredConfig: RequiredConfig, _: Path?): String? = tr
 } catch (e: Exception) {
     null
 }
+
+interface GenericConfig: Comparable<RequiredConfig> {
+    override fun compareTo(other: RequiredConfig) = if (this.name > other.name) 1 else 0
+    val name: String get() = this.javaClass.simpleName
+}
+
 object Configurator {
 
     operator fun invoke(requiredConfig: List<RequiredConfig>, configDir: Path?): Configuration {
