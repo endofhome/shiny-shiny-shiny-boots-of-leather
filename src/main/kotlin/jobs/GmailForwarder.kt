@@ -24,7 +24,6 @@ import jobs.GmailForwarder.Companion.RequiredConfig.GMAIL_FORWARDER_JOB_NAME
 import jobs.GmailForwarder.Companion.RequiredConfig.GMAIL_FORWARDER_RUN_ON_DAYS
 import jobs.GmailForwarder.Companion.RequiredConfig.GMAIL_FORWARDER_TO_ADDRESS
 import jobs.GmailForwarder.Companion.RequiredConfig.GMAIL_FORWARDER_TO_FULLNAME
-import jobs.GmailForwarder.Companion.RequiredConfig.values
 import result.AnEmailAlreadySentThisMonth
 import result.CouldNotGetRawContentForEmail
 import result.Err
@@ -50,23 +49,44 @@ class GmailForwarder(override val jobName: String, private val gmailClient: Simp
 
         companion object: JobCompanion {
 
-            enum class RequiredConfig {
-                GMAIL_FORWARDER_JOB_NAME,
-                GMAIL_FORWARDER_GMAIL_CLIENT_SECRET,
-                GMAIL_FORWARDER_GMAIL_ACCESS_TOKEN,
-                GMAIL_FORWARDER_GMAIL_REFRESH_TOKEN,
-                GMAIL_FORWARDER_DROPBOX_ACCESS_TOKEN,
-                GMAIL_FORWARDER_GMAIL_QUERY,
-                GMAIL_FORWARDER_RUN_ON_DAYS,
-                GMAIL_FORWARDER_FROM_ADDRESS,
-                GMAIL_FORWARDER_FROM_FULLNAME,
-                GMAIL_FORWARDER_TO_ADDRESS,
-                GMAIL_FORWARDER_TO_FULLNAME,
-                GMAIL_FORWARDER_BCC_ADDRESS
+            sealed class RequiredConfig : Comparable<RequiredConfig>{
+
+                companion object {
+                    fun values() = listOf(
+                        GMAIL_FORWARDER_JOB_NAME,
+                        GMAIL_FORWARDER_GMAIL_CLIENT_SECRET,
+                        GMAIL_FORWARDER_GMAIL_ACCESS_TOKEN,
+                        GMAIL_FORWARDER_GMAIL_REFRESH_TOKEN,
+                        GMAIL_FORWARDER_DROPBOX_ACCESS_TOKEN,
+                        GMAIL_FORWARDER_GMAIL_QUERY,
+                        GMAIL_FORWARDER_RUN_ON_DAYS,
+                        GMAIL_FORWARDER_FROM_ADDRESS,
+                        GMAIL_FORWARDER_FROM_FULLNAME,
+                        GMAIL_FORWARDER_TO_ADDRESS,
+                        GMAIL_FORWARDER_TO_FULLNAME,
+                        GMAIL_FORWARDER_BCC_ADDRESS
+                    )
+                }
+
+                override fun compareTo(other: RequiredConfig) = if (this.name > other.name) 1 else 0
+                val name: String = this.javaClass.simpleName
+
+                object GMAIL_FORWARDER_JOB_NAME : RequiredConfig()
+                object GMAIL_FORWARDER_GMAIL_CLIENT_SECRET : RequiredConfig()
+                object GMAIL_FORWARDER_GMAIL_ACCESS_TOKEN : RequiredConfig()
+                object GMAIL_FORWARDER_GMAIL_REFRESH_TOKEN : RequiredConfig()
+                object GMAIL_FORWARDER_DROPBOX_ACCESS_TOKEN : RequiredConfig()
+                object GMAIL_FORWARDER_GMAIL_QUERY : RequiredConfig()
+                object GMAIL_FORWARDER_RUN_ON_DAYS : RequiredConfig()
+                object GMAIL_FORWARDER_FROM_ADDRESS : RequiredConfig()
+                object GMAIL_FORWARDER_FROM_FULLNAME : RequiredConfig()
+                object GMAIL_FORWARDER_TO_ADDRESS : RequiredConfig()
+                object GMAIL_FORWARDER_TO_FULLNAME : RequiredConfig()
+                object GMAIL_FORWARDER_BCC_ADDRESS : RequiredConfig()
             }
 
             override fun initialise(): GmailForwarder {
-                val requiredConfig: List<GmailForwarder.Companion.RequiredConfig> = values().toList()
+                val requiredConfig: List<GmailForwarder.Companion.RequiredConfig> = RequiredConfig.values().toList()
                 val config = Configurator(requiredConfig, Paths.get("credentials"))
                 val gmail = AuthorisedGmailProvider(4000, config.get(GMAIL_FORWARDER_JOB_NAME), config).gmail()
                 val gmailer = HttpGmailClient(gmail)
