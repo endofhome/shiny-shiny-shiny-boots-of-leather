@@ -15,11 +15,11 @@ class HttpGmailClientTest {
 
     @Ignore("Leaving this here for reference re. stubbing Gmail class, but I'm not sure how to make this work at present.")
     @Test
-    fun `Gmailer gets the most relevant email for given query`() {
+    fun `GmailClient gets the most relevant email for given query`() {
         val stubGmail: Gmail = Gmail.Builder(MockHttpTransport(), MockJsonFactory(), HttpRequestInitializer(fun (_: HttpRequest) {})).build()
-        val httpGmailer = HttpGmailClient(stubGmail)
+        val httpGmailClient = HttpGmailClient(stubGmail)
 
-        val email = httpGmailer.lastEmailForQuery("blah")
+        val email = httpGmailClient.lastEmailForQuery("blah")
 
         assertThat(email, equalTo(Message()))
     }

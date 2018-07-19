@@ -11,8 +11,8 @@ import datastore.FlatFileApplicationStateMetadata
 import datastore.HttpDropboxClient
 import datastore.SimpleDropboxClient
 import gmail.AuthorisedGmailProvider
+import gmail.GmailForwarderState
 import gmail.GmailSecrets
-import gmail.GmailerState
 import gmail.HttpGmailClient
 import gmail.SimpleGmailClient
 import gmail.encode
@@ -96,27 +96,27 @@ class GmailForwarder(override val jobName: String, private val gmailClient: Simp
                         config.get(GMAIL_FORWARDER_GMAIL_REFRESH_TOKEN)
                 )
                 val gmail = AuthorisedGmailProvider(4000, config.get(GMAIL_FORWARDER_JOB_NAME), gmailSecrets, config).gmail()
-                val gmailer = HttpGmailClient(gmail)
+                val gmailClient = HttpGmailClient(gmail)
                 val dropboxClient = HttpDropboxClient(config.get(GMAIL_FORWARDER_JOB_NAME), config.get(GMAIL_FORWARDER_DROPBOX_ACCESS_TOKEN))
-                return GmailForwarder(config.get(GMAIL_FORWARDER_JOB_NAME), gmailer, dropboxClient, config)
+                return GmailForwarder(config.get(GMAIL_FORWARDER_JOB_NAME), gmailClient, dropboxClient, config)
             }
         }
 
     override fun run(now: ZonedDateTime): String {
-        val appStateMetadata = FlatFileApplicationStateMetadata("/gmailer_state.json", GmailerState::class.java)
-        val datastore: Datastore<GmailerState> = DropboxDatastore(dropboxClient, appStateMetadata)
+        val appStateMetadata = FlatFileApplicationStateMetadata("/gmailer_state.json", GmailForwarderState::class.java)
+        val datastore: Datastore<GmailForwarderState> = DropboxDatastore(dropboxClient, appStateMetadata)
         val shouldRunNow = config.getAsListOfInt(GMAIL_FORWARDER_RUN_ON_DAYS).includes(now.dayOfMonth)
 
         return shouldRunNow.flatMap { datastore.currentApplicationState() }
-                           .flatMap { applicationState: GmailerState -> shouldTryToSend(applicationState, now) }
+                           .flatMap { applicationState: GmailForwarderState -> shouldTryToSend(applicationState, now) }
                            .map { emailBytes -> tryToSendEmail(datastore, emailBytes) }
                            .orElse { error -> error.message }
     }
 
-    private fun shouldTryToSend(applicationState: GmailerState, now: ZonedDateTime): Result<Err, ByteArray> {
+    private fun shouldTryToSend(applicationState: GmailForwarderState, now: ZonedDateTime): Result<Err, ByteArray> {
         fun ZonedDateTime.yearMonth(): YearMonth = YearMonth.from(this)
 
-        fun thisExactEmailAlreadySent(emailBytes: ByteArray, applicationState: GmailerState): Boolean {
+        fun thisExactEmailAlreadySent(emailBytes: ByteArray, applicationState: GmailForwarderState): Boolean {
             val separatorBetweenHeaderAndMainContent = "________________________________"
             val newEmailContents = String(emailBytes).substringAfter(separatorBetweenHeaderAndMainContent)
             val previousEmailContents = applicationState.emailContents.substringAfter(separatorBetweenHeaderAndMainContent)
@@ -141,7 +141,7 @@ class GmailForwarder(override val jobName: String, private val gmailClient: Simp
         }
     }
 
-    private fun tryToSendEmail(datastore: Datastore<GmailerState>, rawMessageToSend: ByteArray): String {
+    private fun tryToSendEmail(datastore: Datastore<GmailForwarderState>, rawMessageToSend: ByteArray): String {
 
         val clonedMessageWithNewHeaders = gmailClient.newMessageFrom(rawMessageToSend).run {
             replaceSender(InternetAddress(config.get(GMAIL_FORWARDER_FROM_ADDRESS), config.get(GMAIL_FORWARDER_FROM_FULLNAME)))
@@ -153,7 +153,7 @@ class GmailForwarder(override val jobName: String, private val gmailClient: Simp
         return gmailClient.send(clonedMessageWithNewHeaders)
                           .flatMap { message -> message.decodeRawWithResult() }
                           .flatMap { emailContents ->
-                              val newState = GmailerState(ZonedDateTime.now(), emailContents)
+                              val newState = GmailForwarderState(ZonedDateTime.now(), emailContents)
                               datastore.store(newState, "New email has been sent")
                           }
                           .orElse { error -> error.message }

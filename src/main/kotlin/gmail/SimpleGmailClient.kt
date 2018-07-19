@@ -60,7 +60,7 @@ class HttpGmailClient(private val gmail: Gmail) : SimpleGmailClient {
 }
 
 interface ApplicationState
-data class GmailerState(val lastEmailSent: ZonedDateTime, val emailContents: String) : ApplicationState
+data class GmailForwarderState(val lastEmailSent: ZonedDateTime, val emailContents: String) : ApplicationState
 class CouldNotSendEmail : Err {
     override val message = "Error - could not send email/s"
 }
