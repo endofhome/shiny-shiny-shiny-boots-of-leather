@@ -11,6 +11,7 @@ import datastore.FlatFileApplicationStateMetadata
 import datastore.HttpDropboxClient
 import datastore.SimpleDropboxClient
 import gmail.AuthorisedGmailProvider
+import gmail.GmailSecrets
 import gmail.GmailerState
 import gmail.HttpGmailClient
 import gmail.SimpleGmailClient
@@ -89,7 +90,12 @@ class GmailForwarder(override val jobName: String, private val gmailClient: Simp
             override fun initialise(): GmailForwarder {
                 val requiredConfig: List<GmailForwarderConfig> = GmailForwarderConfigList().values().toList()
                 val config = Configurator(requiredConfig, Paths.get("credentials"), GmailForwarderConfigList())
-                val gmail = AuthorisedGmailProvider(4000, config.get(GMAIL_FORWARDER_JOB_NAME), config).gmail()
+                val gmailSecrets = GmailSecrets(
+                        config.get(GMAIL_FORWARDER_GMAIL_CLIENT_SECRET),
+                        config.get(GMAIL_FORWARDER_GMAIL_ACCESS_TOKEN),
+                        config.get(GMAIL_FORWARDER_GMAIL_REFRESH_TOKEN)
+                )
+                val gmail = AuthorisedGmailProvider(4000, config.get(GMAIL_FORWARDER_JOB_NAME), gmailSecrets, config).gmail()
                 val gmailer = HttpGmailClient(gmail)
                 val dropboxClient = HttpDropboxClient(config.get(GMAIL_FORWARDER_JOB_NAME), config.get(GMAIL_FORWARDER_DROPBOX_ACCESS_TOKEN))
                 return GmailForwarder(config.get(GMAIL_FORWARDER_JOB_NAME), gmailer, dropboxClient, config)
