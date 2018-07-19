@@ -4,13 +4,15 @@ import com.google.api.services.gmail.model.Message
 import com.natpryce.hamkrest.assertion.assertThat
 import com.natpryce.hamkrest.equalTo
 import config.Configuration
+import config.RequiredConfig
 import datastore.DropboxWriteFailure
 import datastore.ErrorDownloadingFileFromDropbox
 import datastore.SimpleDropboxClient
 import gmail.CouldNotSendEmail
 import gmail.SimpleGmailClient
 import jobs.GmailForwarder
-import jobs.GmailForwarder.Companion.RequiredConfig
+import jobs.GmailForwarder.Companion.GmailForwarderConfig
+import jobs.GmailForwarder.Companion.GmailForwarderConfigList
 import org.junit.Test
 import result.Result
 import result.Result.Failure
@@ -21,14 +23,15 @@ import java.time.ZonedDateTime
 class GmailForwarderAcceptanceTest {
 
     private val time = ZonedDateTime.of(2018, 6, 1, 0, 0, 0, 0, UTC)
-    private val baseConfigValues = RequiredConfig.values().associate { it to "unused" }.toMutableMap()
-    private val configValues = baseConfigValues.apply {
-        set(RequiredConfig.GMAIL_FORWARDER_RUN_ON_DAYS, "1")
-        set(RequiredConfig.GMAIL_FORWARDER_TO_ADDRESS, "jim@example.com")
-        set(RequiredConfig.GMAIL_FORWARDER_FROM_ADDRESS, "bob@example.com")
-        set(RequiredConfig.GMAIL_FORWARDER_BCC_ADDRESS, "fred@example.com")
+    private val baseConfigValues = GmailForwarderConfigList().values().associate { it to "unused" }.toMutableMap()
+    private val configValues: Map<GmailForwarderConfig, String> = baseConfigValues.apply {
+        set(GmailForwarderConfig.GMAIL_FORWARDER_RUN_ON_DAYS, "1")
+        set(GmailForwarderConfig.GMAIL_FORWARDER_TO_ADDRESS, "jim@example.com")
+        set(GmailForwarderConfig.GMAIL_FORWARDER_FROM_ADDRESS, "bob@example.com")
+        set(GmailForwarderConfig.GMAIL_FORWARDER_BCC_ADDRESS, "fred@example.com")
     }.toMap()
-    private val config = Configuration(configValues, null)
+    @Suppress("UNCHECKED_CAST")
+    private val config = Configuration(configValues as Map<RequiredConfig, String>, GmailForwarderConfigList(), null)
 
     @Test
     fun `Happy path`() {
@@ -126,8 +129,8 @@ class GmailForwarderAcceptanceTest {
         val emails = listOf(Message().setRaw("New email data"))
         val firstOfJune = ZonedDateTime.of(2018, 6, 1, 0, 0, 0, 0, UTC)
         val localConfig = config.copy(
-                values = configValues.toMutableMap()
-                                     .apply { set(RequiredConfig.GMAIL_FORWARDER_RUN_ON_DAYS, "2, 11,12, 31 ") }
+                config = configValues.toMutableMap()
+                                     .apply { set(GmailForwarderConfig.GMAIL_FORWARDER_RUN_ON_DAYS, "2, 11,12, 31 ") }
                                      .toMap()
         )
         val jobResult = GmailForwarder("unused", StubGmailClient(emails), dropboxClient, localConfig).run(firstOfJune)
@@ -198,8 +201,8 @@ class GmailForwarderAcceptanceTest {
 
         val dropboxClient = StubDropboxClient(listOf(stateFile))
         val localConfig = config.copy(
-                values = configValues.toMutableMap()
-                                     .apply { set(RequiredConfig.GMAIL_FORWARDER_GMAIL_QUERY, "some search query") }
+                config = configValues.toMutableMap()
+                                     .apply { set(GmailForwarderConfig.GMAIL_FORWARDER_GMAIL_QUERY, "some search query") }
                                      .toMap()
         )
         val jobResult = GmailForwarder("unused", StubGmailClientThatReturnsNoMatches(emptyList()), dropboxClient, localConfig).run(time)

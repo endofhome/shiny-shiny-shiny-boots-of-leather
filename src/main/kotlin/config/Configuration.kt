@@ -1,24 +1,23 @@
 package config
 
-import jobs.GmailForwarder.Companion.RequiredConfig
 import java.nio.file.Path
 
-data class Configuration (private val values: Map<RequiredConfig, String?>, val configDir: Path?) {
+data class Configuration(private val config: Map<RequiredConfig, String?>, private val configList: RequiredConfigList, val configDir: Path?) {
 
     init {
-        validate(RequiredConfig.values().toSet(), values)
+        validate(configList.values().toSet(), config)
     }
 
-    fun get(requiredConfig: RequiredConfig): String = try {
-        this.values[requiredConfig]!!
+    fun get(value: RequiredConfig): String = try {
+        this.config[value]!!
     } catch (e: Exception) {
-        throw ConfigurationException("$requiredConfig was not available during get")
+        throw ConfigurationException("$value was not available during get")
     }
 
-    fun getAsListOfInt(requiredConfig: RequiredConfig, delimiter: Char = ','): List<Int> = try {
-        this.get(requiredConfig).split(delimiter).map { it.trim().toInt() }
+    fun getAsListOfInt(value: RequiredConfig, delimiter: Char = ','): List<Int> = try {
+        this.get(value).split(delimiter).map { it.trim().toInt() }
     } catch (e: Exception) {
-        throw ConfigurationException("It was not safe to return $requiredConfig as a list of ${Int::class}")
+        throw ConfigurationException("It was not safe to return $value as a list of ${Int::class}")
     }
 
     private fun validate(required: Set<RequiredConfig>, provided: Map<RequiredConfig, String?>) {

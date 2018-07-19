@@ -1,6 +1,5 @@
 package config
 
-import jobs.GmailForwarder.Companion.RequiredConfig
 import java.io.File
 import java.nio.file.Path
 
@@ -21,14 +20,22 @@ val getFromEnvVar = fun (requiredConfig: RequiredConfig, _: Path?): String? = tr
     null
 }
 
-interface GenericConfig: Comparable<RequiredConfig> {
-    override fun compareTo(other: RequiredConfig) = if (this.name > other.name) 1 else 0
+interface RequiredConfig: Comparable<RequiredConfig> {
+    override fun compareTo(other: RequiredConfig) = when {
+        this.name > other.name  -> 1
+        this.name == other.name -> 0
+        else                    -> -1
+    }
     val name: String get() = this.javaClass.simpleName
+}
+
+interface RequiredConfigList {
+    fun values(): List<RequiredConfig>
 }
 
 object Configurator {
 
-    operator fun invoke(requiredConfig: List<RequiredConfig>, configDir: Path?): Configuration {
+    operator fun invoke(requiredConfig: List<RequiredConfig>, configDir: Path?, configList: RequiredConfigList): Configuration {
 
         val foundConfig = requiredConfig.map { required ->
             fun lookForConfig(tried: List<ConfigMethod> = emptyList()): Pair<RequiredConfig, String?> {
@@ -49,6 +56,6 @@ object Configurator {
             lookForConfig()
         }.toMap()
 
-        return Configuration(foundConfig, configDir)
+        return Configuration(foundConfig, configList, configDir)
     }
 }
