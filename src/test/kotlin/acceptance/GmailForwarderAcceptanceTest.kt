@@ -8,12 +8,12 @@ import config.RequiredConfig
 import datastore.DropboxWriteFailure
 import datastore.ErrorDownloadingFileFromDropbox
 import datastore.SimpleDropboxClient
-import gmail.CouldNotSendEmail
 import gmail.SimpleGmailClient
 import jobs.GmailForwarderJob.GmailForwarder
 import jobs.GmailForwarderJob.GmailForwarder.Companion.GmailForwarderConfig
 import jobs.GmailForwarderJob.GmailForwarder.Companion.GmailForwarderConfigList
 import org.junit.Test
+import result.CouldNotSendEmail
 import result.Result
 import result.Result.Failure
 import result.Result.Success

@@ -5,7 +5,6 @@ import com.fasterxml.jackson.core.JsonProcessingException
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
-import gmail.ApplicationState
 import result.Err
 import result.Result
 import result.Result.Failure
@@ -48,4 +47,5 @@ class DropboxDatastore<T : ApplicationState>(private val dropboxClient: SimpleDr
         }
 }
 
+interface ApplicationState
 data class FlatFileApplicationStateMetadata<T>(val filename: String, val stateClass: Class<T>)

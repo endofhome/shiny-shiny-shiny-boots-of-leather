@@ -5,13 +5,13 @@ import config.Configuration
 import config.Configurator
 import config.RequiredConfig
 import config.RequiredConfigList
+import datastore.ApplicationState
 import datastore.Datastore
 import datastore.DropboxDatastore
 import datastore.FlatFileApplicationStateMetadata
 import datastore.HttpDropboxClient
 import datastore.SimpleDropboxClient
 import gmail.AuthorisedGmailProvider
-import gmail.GmailForwarderState
 import gmail.GmailSecrets
 import gmail.HttpGmailClient
 import gmail.SimpleGmailClient
@@ -169,3 +169,5 @@ class GmailForwarder(override val jobName: String, private val gmailClient: Simp
         else                      -> Failure(NoNeedToRunAtThisTime(dayOfMonth, this))
     }
 }
+
+data class GmailForwarderState(val lastEmailSent: ZonedDateTime, val emailContents: String) : ApplicationState

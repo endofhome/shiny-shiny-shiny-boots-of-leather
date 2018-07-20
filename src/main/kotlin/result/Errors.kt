@@ -34,6 +34,10 @@ class ErrorDecoding : Err {
     override val message = "Error - could not decode raw message"
 }
 
+class CouldNotSendEmail : Err {
+    override val message = "Error - could not send email/s"
+}
+
 class UnknownError : Err {
     override val message = "Exiting due to unknown error"
 

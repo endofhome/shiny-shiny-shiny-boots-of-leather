@@ -5,13 +5,12 @@ import com.google.api.services.gmail.Gmail
 import com.google.api.services.gmail.Gmail.Users.Messages
 import com.google.api.services.gmail.model.ListMessagesResponse
 import com.google.api.services.gmail.model.Message
-import result.Err
+import result.CouldNotSendEmail
 import result.Result
 import result.Result.Failure
 import result.Result.Success
 import java.io.ByteArrayInputStream
 import java.io.IOException
-import java.time.ZonedDateTime
 import java.util.Properties
 import javax.mail.Session
 import javax.mail.internet.MimeMessage
@@ -57,10 +56,4 @@ class HttpGmailClient(private val gmail: Gmail) : SimpleGmailClient {
     private fun messages(): Messages {
         return gmail.users().messages()
     }
-}
-
-interface ApplicationState
-data class GmailForwarderState(val lastEmailSent: ZonedDateTime, val emailContents: String) : ApplicationState
-class CouldNotSendEmail : Err {
-    override val message = "Error - could not send email/s"
 }

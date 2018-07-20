@@ -11,7 +11,6 @@ import datastore.FlatFileApplicationStateMetadata
 import datastore.HttpDropboxClient
 import datastore.SimpleDropboxClient
 import gmail.AuthorisedGmailProvider
-import gmail.GmailForwarderState
 import gmail.GmailSecrets
 import gmail.HttpGmailClient
 import gmail.SimpleGmailClient
@@ -30,6 +29,7 @@ import jobs.GmailForwarder.Companion.GmailForwarderConfig.GMAIL_FORWARDER_JOB_NA
 import jobs.GmailForwarder.Companion.GmailForwarderConfig.GMAIL_FORWARDER_RUN_ON_DAYS
 import jobs.GmailForwarder.Companion.GmailForwarderConfig.GMAIL_FORWARDER_TO_ADDRESS
 import jobs.GmailForwarder.Companion.GmailForwarderConfig.GMAIL_FORWARDER_TO_FULLNAME
+import jobs.GmailForwarderJob.GmailForwarderState
 import result.AnEmailAlreadySentThisMonth
 import result.CouldNotGetRawContentForEmail
 import result.Err
