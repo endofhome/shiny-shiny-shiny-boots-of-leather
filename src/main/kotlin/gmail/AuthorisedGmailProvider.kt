@@ -14,7 +14,7 @@ import com.google.api.services.gmail.Gmail
 import com.google.api.services.gmail.GmailScopes
 import config.Configuration
 
-class AuthorisedGmailProvider(port: Int, private val appName: String, private val gmailSecrets: GmailSecrets, private val config: Configuration) {
+class AuthorisedGmailProvider(port: Int, private val appName: String, private val secrets: GmailSecrets, private val config: Configuration) {
 
     private val useAccessTokenFromConfig = true
     private val jsonFactory = JacksonFactory.getDefaultInstance()
@@ -32,21 +32,21 @@ class AuthorisedGmailProvider(port: Int, private val appName: String, private va
     }
 
     private fun credentialFromConfig(): Credential {
-        val clientSecrets: GoogleClientSecrets = GoogleClientSecrets.load(jsonFactory, gmailSecrets.clientSecret.reader())
+        val clientSecrets: GoogleClientSecrets = GoogleClientSecrets.load(jsonFactory, secrets.clientSecret.reader())
         val credential = GoogleCredential.Builder()
                                          .setTransport(httpTransport)
                                          .setJsonFactory(jsonFactory)
                                          .setClientSecrets(clientSecrets)
                                          .build()
-        credential.accessToken = gmailSecrets.accessToken
-        credential.refreshToken = gmailSecrets.refreshToken
+        credential.accessToken = secrets.accessToken
+        credential.refreshToken = secrets.refreshToken
         return credential
     }
 
     private fun newCredentials(httpTransport: NetHttpTransport, port: Int): Credential {
         val credentialsFolder = config.configDir?.toFile()
         val scopes = listOf(GmailScopes.MAIL_GOOGLE_COM)
-        val clientSecrets: GoogleClientSecrets = GoogleClientSecrets.load(jsonFactory, gmailSecrets.clientSecret.reader())
+        val clientSecrets: GoogleClientSecrets = GoogleClientSecrets.load(jsonFactory, secrets.clientSecret.reader())
 
         val flow = GoogleAuthorizationCodeFlow.Builder(
                 httpTransport, jsonFactory, clientSecrets, scopes)
