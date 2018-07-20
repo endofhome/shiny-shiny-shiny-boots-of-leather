@@ -162,7 +162,7 @@ class GmailForwarder(override val jobName: String, private val gmailClient: Simp
     }
 
     private fun Message.decodeRawWithResult() : Result<ErrorDecoding, String> =
-            this.decodeRaw()?.let { Success(String(it)) } ?: Failure(ErrorDecoding())
+            this.decodeRaw()?.let { Success(String(it)) } ?: Failure(ErrorDecoding("message was sent but updated state was not stored in Dropbox."))
 
     private fun List<Int>.includes(dayOfMonth: Int): Result<NoNeedToRunAtThisTime, Int> = when {
         this.contains(dayOfMonth) -> Success(dayOfMonth)
