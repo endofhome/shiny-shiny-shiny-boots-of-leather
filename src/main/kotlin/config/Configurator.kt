@@ -30,12 +30,12 @@ interface RequiredConfig: Comparable<RequiredConfig> {
 }
 
 interface RequiredConfigList {
-    fun values(): List<RequiredConfig>
+    fun values(): Set<RequiredConfig>
 }
 
 object Configurator {
 
-    operator fun invoke(requiredConfig: List<RequiredConfig>, configDir: Path?, configList: RequiredConfigList): Configuration {
+    operator fun invoke(requiredConfig: Set<RequiredConfig>, configDir: Path?, configList: RequiredConfigList): Configuration {
 
         val foundConfig = requiredConfig.map { required ->
             fun lookForConfig(tried: List<ConfigMethod> = emptyList()): Pair<RequiredConfig, String?> {
