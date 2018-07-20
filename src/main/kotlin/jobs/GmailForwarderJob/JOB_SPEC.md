@@ -1,9 +1,9 @@
-#### GmailForwarder job
+## GmailForwarder job
 
-##### What does it do?
+### What does it do?
 This job performs a search query against a Gmail account and forwards the latest email matching that query to a specified email address. The current state of the application is simple, so is stored in a blob of JSON in a file in Dropbox.
 
-#### Required configuration:
+### Required configuration:
 
 | Config value|Description
 |------------- |------------- |
