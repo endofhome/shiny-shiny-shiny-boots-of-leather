@@ -16,6 +16,7 @@ The entire app is run on Heroku using the Heroku Scheduler plugin, but it could 
 
 ### What do I need to run it?
 * kotlin
+* Any necessary third-party accounts/API access configured (depending on the jobs being run)
 * The configuration values required for each job. These can be provided in files in the `credentials` directory or as environment variables. There is a `JOB_SPEC.md` file in the package for each job. See the example of the GmailForwarder job [here](src/main/kotlin/jobs/GmailForwarderJob/JOB_SPEC.md).
 
 ### How do I run it?
