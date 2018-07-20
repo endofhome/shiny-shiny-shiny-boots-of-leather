@@ -74,24 +74,23 @@ class GmailForwarder(override val jobName: String, private val gmailClient: Simp
 
             class GmailForwarderConfigList: RequiredConfigList {
                 override fun values() = setOf(
-                        GMAIL_FORWARDER_JOB_NAME,
-                        GMAIL_FORWARDER_GMAIL_CLIENT_SECRET,
-                        GMAIL_FORWARDER_GMAIL_ACCESS_TOKEN,
-                        GMAIL_FORWARDER_GMAIL_REFRESH_TOKEN,
-                        GMAIL_FORWARDER_DROPBOX_ACCESS_TOKEN,
-                        GMAIL_FORWARDER_GMAIL_QUERY,
-                        GMAIL_FORWARDER_RUN_ON_DAYS,
-                        GMAIL_FORWARDER_FROM_ADDRESS,
-                        GMAIL_FORWARDER_FROM_FULLNAME,
-                        GMAIL_FORWARDER_TO_ADDRESS,
-                        GMAIL_FORWARDER_TO_FULLNAME,
-                        GMAIL_FORWARDER_BCC_ADDRESS
+                    GMAIL_FORWARDER_JOB_NAME,
+                    GMAIL_FORWARDER_GMAIL_CLIENT_SECRET,
+                    GMAIL_FORWARDER_GMAIL_ACCESS_TOKEN,
+                    GMAIL_FORWARDER_GMAIL_REFRESH_TOKEN,
+                    GMAIL_FORWARDER_DROPBOX_ACCESS_TOKEN,
+                    GMAIL_FORWARDER_GMAIL_QUERY,
+                    GMAIL_FORWARDER_RUN_ON_DAYS,
+                    GMAIL_FORWARDER_FROM_ADDRESS,
+                    GMAIL_FORWARDER_FROM_FULLNAME,
+                    GMAIL_FORWARDER_TO_ADDRESS,
+                    GMAIL_FORWARDER_TO_FULLNAME,
+                    GMAIL_FORWARDER_BCC_ADDRESS
                 )
             }
 
             override fun initialise(): GmailForwarder {
-                val requiredConfig: Set<GmailForwarderConfig> = GmailForwarderConfigList().values()
-                val config = Configurator(requiredConfig, Paths.get("credentials"), GmailForwarderConfigList())
+                val config = Configurator(GmailForwarderConfigList(), Paths.get("credentials"))
                 val gmailSecrets = GmailSecrets(
                         config.get(GMAIL_FORWARDER_GMAIL_CLIENT_SECRET),
                         config.get(GMAIL_FORWARDER_GMAIL_ACCESS_TOKEN),

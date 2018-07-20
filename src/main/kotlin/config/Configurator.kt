@@ -35,9 +35,9 @@ interface RequiredConfigList {
 
 object Configurator {
 
-    operator fun invoke(requiredConfig: Set<RequiredConfig>, configDir: Path?, configList: RequiredConfigList): Configuration {
+    operator fun invoke(requiredConfigList: RequiredConfigList, configDir: Path?): Configuration {
 
-        val foundConfig = requiredConfig.map { required ->
+        val foundConfig = requiredConfigList.values().map { required ->
             fun lookForConfig(tried: List<ConfigMethod> = emptyList()): Pair<RequiredConfig, String?> {
                 val methodToTry: ConfigMethod? = ConfigMethod.values().toList().find { tried.contains(it).not() }
 
@@ -56,6 +56,6 @@ object Configurator {
             lookForConfig()
         }.toMap()
 
-        return Configuration(foundConfig, configList, configDir)
+        return Configuration(foundConfig, requiredConfigList, configDir)
     }
 }
