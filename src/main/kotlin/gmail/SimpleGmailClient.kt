@@ -37,7 +37,8 @@ class HttpGmailClient(private val gmail: Gmail) : SimpleGmailClient {
 
     override fun send(message: Message): Result<CouldNotSendEmail, Message> {
         return try {
-            Success(messages().send(user, message).execute())
+            messages().send(user, message).execute()
+            Success(message)
         } catch (e: Exception) {
             when (e) {
                 is IOException -> Failure(CouldNotSendEmail())
