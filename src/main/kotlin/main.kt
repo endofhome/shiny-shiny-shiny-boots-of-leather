@@ -1,4 +1,4 @@
-import jobs.GmailForwarder
+import jobs.GmailForwarderJob.GmailForwarder
 import jobs.Job
 import java.time.ZonedDateTime
 

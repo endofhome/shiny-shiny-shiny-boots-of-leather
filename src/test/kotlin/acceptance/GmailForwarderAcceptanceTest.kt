@@ -10,9 +10,9 @@ import datastore.ErrorDownloadingFileFromDropbox
 import datastore.SimpleDropboxClient
 import gmail.CouldNotSendEmail
 import gmail.SimpleGmailClient
-import jobs.GmailForwarder
-import jobs.GmailForwarder.Companion.GmailForwarderConfig
-import jobs.GmailForwarder.Companion.GmailForwarderConfigList
+import jobs.GmailForwarderJob.GmailForwarder
+import jobs.GmailForwarderJob.GmailForwarder.Companion.GmailForwarderConfig
+import jobs.GmailForwarderJob.GmailForwarder.Companion.GmailForwarderConfigList
 import org.junit.Test
 import result.Result
 import result.Result.Failure
