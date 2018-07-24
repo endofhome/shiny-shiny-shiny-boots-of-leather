@@ -5,7 +5,7 @@ This job performs a search query against a Gmail account and forwards the latest
 
 ### Required configuration:
 
-| Config value|Description
+| Config item|Description
 |------------- |------------- |
 |```GMAIL_FORWARDER_JOB_NAME```| A name for the job, ie. "John's job"
 |```GMAIL_FORWARDER_GMAIL_CLIENT_SECRET```| 

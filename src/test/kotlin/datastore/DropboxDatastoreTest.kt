@@ -1,9 +1,9 @@
 package datastore
 
-import acceptance.FileLike
-import acceptance.StubDropboxClient
 import com.natpryce.hamkrest.assertion.assertThat
 import com.natpryce.hamkrest.equalTo
+import jobs.GmailForwarderTest.FileLike
+import jobs.GmailForwarderTest.StubDropboxClient
 import org.junit.Test
 import result.Result
 import result.Result.Success

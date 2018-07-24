@@ -2,26 +2,26 @@ package config
 
 import java.nio.file.Path
 
-data class Configuration(private val config: Map<RequiredConfig, String?>, private val configList: RequiredConfigList, val configDir: Path?) {
+data class Configuration(private val config: Map<RequiredConfigItem, String?>, private val requiredConfig: RequiredConfig, val configDir: Path?) {
 
     init {
-        validate(configList.values().toSet(), config)
+        validate(requiredConfig.values().toSet(), config)
     }
 
-    fun get(value: RequiredConfig): String = try {
-        this.config[value]!!
+    fun get(item: RequiredConfigItem): String = try {
+        this.config[item]!!
     } catch (e: Exception) {
-        throw ConfigurationException("$value was not available during get")
+        throw ConfigurationException("$item was not available during get")
     }
 
-    fun getAsListOfInt(value: RequiredConfig, delimiter: Char = ','): List<Int> = try {
-        this.get(value).split(delimiter).map { it.trim().toInt() }
+    fun getAsListOfInt(item: RequiredConfigItem, delimiter: Char = ','): List<Int> = try {
+        this.get(item).split(delimiter).map { it.trim().toInt() }
     } catch (e: Exception) {
-        throw ConfigurationException("It was not safe to return $value as a list of ${Int::class}")
+        throw ConfigurationException("It was not safe to return $item as a list of ${Int::class}")
     }
 
-    private fun validate(required: Set<RequiredConfig>, provided: Map<RequiredConfig, String?>) {
-        fun pluralise(missingConfig: List<RequiredConfig>): String = when {
+    private fun validate(required: Set<RequiredConfigItem>, provided: Map<RequiredConfigItem, String?>) {
+        fun pluralise(missingConfig: List<RequiredConfigItem>): String = when {
             missingConfig.size > 1 -> "s"
             else                   -> ""
         }

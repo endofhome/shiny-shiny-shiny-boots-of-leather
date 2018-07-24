@@ -4,7 +4,7 @@ import com.google.api.services.gmail.model.Message
 import config.Configuration
 import config.Configurator
 import config.RequiredConfig
-import config.RequiredConfigList
+import config.RequiredConfigItem
 import datastore.ApplicationState
 import datastore.Datastore
 import datastore.DropboxDatastore
@@ -18,18 +18,18 @@ import gmail.SimpleGmailClient
 import gmail.encode
 import gmail.replaceRecipient
 import gmail.replaceSender
-import jobs.GmailForwarderJob.GmailForwarder.Companion.GmailForwarderConfig.GMAIL_FORWARDER_BCC_ADDRESS
-import jobs.GmailForwarderJob.GmailForwarder.Companion.GmailForwarderConfig.GMAIL_FORWARDER_DROPBOX_ACCESS_TOKEN
-import jobs.GmailForwarderJob.GmailForwarder.Companion.GmailForwarderConfig.GMAIL_FORWARDER_FROM_ADDRESS
-import jobs.GmailForwarderJob.GmailForwarder.Companion.GmailForwarderConfig.GMAIL_FORWARDER_FROM_FULLNAME
-import jobs.GmailForwarderJob.GmailForwarder.Companion.GmailForwarderConfig.GMAIL_FORWARDER_GMAIL_ACCESS_TOKEN
-import jobs.GmailForwarderJob.GmailForwarder.Companion.GmailForwarderConfig.GMAIL_FORWARDER_GMAIL_CLIENT_SECRET
-import jobs.GmailForwarderJob.GmailForwarder.Companion.GmailForwarderConfig.GMAIL_FORWARDER_GMAIL_QUERY
-import jobs.GmailForwarderJob.GmailForwarder.Companion.GmailForwarderConfig.GMAIL_FORWARDER_GMAIL_REFRESH_TOKEN
-import jobs.GmailForwarderJob.GmailForwarder.Companion.GmailForwarderConfig.GMAIL_FORWARDER_JOB_NAME
-import jobs.GmailForwarderJob.GmailForwarder.Companion.GmailForwarderConfig.GMAIL_FORWARDER_RUN_ON_DAYS
-import jobs.GmailForwarderJob.GmailForwarder.Companion.GmailForwarderConfig.GMAIL_FORWARDER_TO_ADDRESS
-import jobs.GmailForwarderJob.GmailForwarder.Companion.GmailForwarderConfig.GMAIL_FORWARDER_TO_FULLNAME
+import jobs.GmailForwarderJob.GmailForwarder.Companion.GmailForwarderConfigItem.GMAIL_FORWARDER_BCC_ADDRESS
+import jobs.GmailForwarderJob.GmailForwarder.Companion.GmailForwarderConfigItem.GMAIL_FORWARDER_DROPBOX_ACCESS_TOKEN
+import jobs.GmailForwarderJob.GmailForwarder.Companion.GmailForwarderConfigItem.GMAIL_FORWARDER_FROM_ADDRESS
+import jobs.GmailForwarderJob.GmailForwarder.Companion.GmailForwarderConfigItem.GMAIL_FORWARDER_FROM_FULLNAME
+import jobs.GmailForwarderJob.GmailForwarder.Companion.GmailForwarderConfigItem.GMAIL_FORWARDER_GMAIL_ACCESS_TOKEN
+import jobs.GmailForwarderJob.GmailForwarder.Companion.GmailForwarderConfigItem.GMAIL_FORWARDER_GMAIL_CLIENT_SECRET
+import jobs.GmailForwarderJob.GmailForwarder.Companion.GmailForwarderConfigItem.GMAIL_FORWARDER_GMAIL_QUERY
+import jobs.GmailForwarderJob.GmailForwarder.Companion.GmailForwarderConfigItem.GMAIL_FORWARDER_GMAIL_REFRESH_TOKEN
+import jobs.GmailForwarderJob.GmailForwarder.Companion.GmailForwarderConfigItem.GMAIL_FORWARDER_JOB_NAME
+import jobs.GmailForwarderJob.GmailForwarder.Companion.GmailForwarderConfigItem.GMAIL_FORWARDER_RUN_ON_DAYS
+import jobs.GmailForwarderJob.GmailForwarder.Companion.GmailForwarderConfigItem.GMAIL_FORWARDER_TO_ADDRESS
+import jobs.GmailForwarderJob.GmailForwarder.Companion.GmailForwarderConfigItem.GMAIL_FORWARDER_TO_FULLNAME
 import jobs.Job
 import jobs.JobCompanion
 import result.AnEmailAlreadySentThisMonth
@@ -57,22 +57,22 @@ class GmailForwarder(override val jobName: String, private val gmailClient: Simp
 
         companion object: JobCompanion {
 
-            sealed class GmailForwarderConfig : RequiredConfig {
-                object GMAIL_FORWARDER_JOB_NAME : GmailForwarderConfig()
-                object GMAIL_FORWARDER_GMAIL_CLIENT_SECRET : GmailForwarderConfig()
-                object GMAIL_FORWARDER_GMAIL_ACCESS_TOKEN : GmailForwarderConfig()
-                object GMAIL_FORWARDER_GMAIL_REFRESH_TOKEN : GmailForwarderConfig()
-                object GMAIL_FORWARDER_DROPBOX_ACCESS_TOKEN : GmailForwarderConfig()
-                object GMAIL_FORWARDER_GMAIL_QUERY : GmailForwarderConfig()
-                object GMAIL_FORWARDER_RUN_ON_DAYS : GmailForwarderConfig()
-                object GMAIL_FORWARDER_FROM_ADDRESS : GmailForwarderConfig()
-                object GMAIL_FORWARDER_FROM_FULLNAME : GmailForwarderConfig()
-                object GMAIL_FORWARDER_TO_ADDRESS : GmailForwarderConfig()
-                object GMAIL_FORWARDER_TO_FULLNAME : GmailForwarderConfig()
-                object GMAIL_FORWARDER_BCC_ADDRESS : GmailForwarderConfig()
+            sealed class GmailForwarderConfigItem : RequiredConfigItem {
+                object GMAIL_FORWARDER_JOB_NAME : GmailForwarderConfigItem()
+                object GMAIL_FORWARDER_GMAIL_CLIENT_SECRET : GmailForwarderConfigItem()
+                object GMAIL_FORWARDER_GMAIL_ACCESS_TOKEN : GmailForwarderConfigItem()
+                object GMAIL_FORWARDER_GMAIL_REFRESH_TOKEN : GmailForwarderConfigItem()
+                object GMAIL_FORWARDER_DROPBOX_ACCESS_TOKEN : GmailForwarderConfigItem()
+                object GMAIL_FORWARDER_GMAIL_QUERY : GmailForwarderConfigItem()
+                object GMAIL_FORWARDER_RUN_ON_DAYS : GmailForwarderConfigItem()
+                object GMAIL_FORWARDER_FROM_ADDRESS : GmailForwarderConfigItem()
+                object GMAIL_FORWARDER_FROM_FULLNAME : GmailForwarderConfigItem()
+                object GMAIL_FORWARDER_TO_ADDRESS : GmailForwarderConfigItem()
+                object GMAIL_FORWARDER_TO_FULLNAME : GmailForwarderConfigItem()
+                object GMAIL_FORWARDER_BCC_ADDRESS : GmailForwarderConfigItem()
             }
 
-            class GmailForwarderConfigList: RequiredConfigList {
+            class GmailForwarderConfig: RequiredConfig {
                 override fun values() = setOf(
                     GMAIL_FORWARDER_JOB_NAME,
                     GMAIL_FORWARDER_GMAIL_CLIENT_SECRET,
@@ -90,7 +90,7 @@ class GmailForwarder(override val jobName: String, private val gmailClient: Simp
             }
 
             override fun initialise(): GmailForwarder {
-                val config = Configurator(GmailForwarderConfigList(), Paths.get("credentials"))
+                val config = Configurator(GmailForwarderConfig(), Paths.get("credentials"))
                 val gmailSecrets = GmailSecrets(
                         config.get(GMAIL_FORWARDER_GMAIL_CLIENT_SECRET),
                         config.get(GMAIL_FORWARDER_GMAIL_ACCESS_TOKEN),

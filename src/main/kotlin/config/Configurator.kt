@@ -3,25 +3,25 @@ package config
 import java.io.File
 import java.nio.file.Path
 
-enum class ConfigMethod(val tryToGetConfig: (RequiredConfig, Path?) -> String?) {
+enum class ConfigMethod(val tryToGetConfig: (RequiredConfigItem, Path?) -> String?) {
     FileStorage(getFromFile),
     EnvironmentVariables(getFromEnvVar)
 }
 
-val getFromFile = fun (requiredConfig: RequiredConfig, configDir: Path?): String? = try {
+val getFromFile = fun (requiredConfig: RequiredConfigItem, configDir: Path?): String? = try {
     File(configDir.toString() + File.separator + requiredConfig.name.toLowerCase()).readText()
 } catch (e: Exception) {
     null
 }
 
-val getFromEnvVar = fun (requiredConfig: RequiredConfig, _: Path?): String? = try {
+val getFromEnvVar = fun (requiredConfig: RequiredConfigItem, _: Path?): String? = try {
     System.getenv(requiredConfig.name)
 } catch (e: Exception) {
     null
 }
 
-interface RequiredConfig: Comparable<RequiredConfig> {
-    override fun compareTo(other: RequiredConfig) = when {
+interface RequiredConfigItem: Comparable<RequiredConfigItem> {
+    override fun compareTo(other: RequiredConfigItem) = when {
         this.name > other.name  -> 1
         this.name == other.name -> 0
         else                    -> -1
@@ -29,16 +29,16 @@ interface RequiredConfig: Comparable<RequiredConfig> {
     val name: String get() = this.javaClass.simpleName
 }
 
-interface RequiredConfigList {
-    fun values(): Set<RequiredConfig>
+interface RequiredConfig {
+    fun values(): Set<RequiredConfigItem>
 }
 
 object Configurator {
 
-    operator fun invoke(requiredConfigList: RequiredConfigList, configDir: Path?): Configuration {
+    operator fun invoke(requiredConfig: RequiredConfig, configDir: Path?): Configuration {
 
-        val foundConfig = requiredConfigList.values().map { required ->
-            fun lookForConfig(tried: List<ConfigMethod> = emptyList()): Pair<RequiredConfig, String?> {
+        val foundConfig = requiredConfig.values().map { required ->
+            fun lookForConfig(tried: List<ConfigMethod> = emptyList()): Pair<RequiredConfigItem, String?> {
                 val methodToTry: ConfigMethod? = ConfigMethod.values().toList().find { tried.contains(it).not() }
 
                 return when {
@@ -56,6 +56,6 @@ object Configurator {
             lookForConfig()
         }.toMap()
 
-        return Configuration(foundConfig, requiredConfigList, configDir)
+        return Configuration(foundConfig, requiredConfig, configDir)
     }
 }
