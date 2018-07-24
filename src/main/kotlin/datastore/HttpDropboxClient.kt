@@ -8,6 +8,7 @@ import com.dropbox.core.v2.DbxClientV2
 import com.dropbox.core.v2.files.DownloadErrorException
 import com.dropbox.core.v2.files.FileMetadata
 import com.dropbox.core.v2.files.WriteMode
+import config.osNewline
 import result.Err
 import result.Result
 import result.Result.Failure
@@ -42,7 +43,7 @@ class HttpDropboxClient(identifier: String, accessToken: String) : SimpleDropbox
                         .withMode(WriteMode.OVERWRITE)
                         .uploadAndFinish(inputStream)
             }
-            Success("$fileDescription\nCurrent state has been stored in Dropbox")
+            Success("$fileDescription${osNewline}Current state has been stored in Dropbox")
         } catch (e: Exception) {
             when (e) {
                 is DbxApiException,
