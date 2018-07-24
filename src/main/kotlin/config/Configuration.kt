@@ -17,7 +17,7 @@ data class Configuration(private val config: Map<RequiredConfigItem, String?>, p
     fun getAsListOfInt(item: RequiredConfigItem, delimiter: Char = ','): List<Int> = try {
         this.get(item).split(delimiter).map { it.trim().toInt() }
     } catch (e: Exception) {
-        throw ConfigurationException("It was not safe to return $item as a list of ${Int::class}")
+        throw ConfigurationException("It was not safe to return ${item.name} as a list of ${Int::class}")
     }
 
     private fun validate(required: Set<RequiredConfigItem>, provided: Map<RequiredConfigItem, String?>) {
