@@ -54,55 +54,55 @@ import javax.mail.Message.RecipientType
 import javax.mail.internet.InternetAddress
 
 class GmailForwarder(private val gmailClient: SimpleGmailClient, private val dropboxClient: SimpleDropboxClient, private val config: Configuration): Job {
-        override val jobName: String = config.get(GMAIL_FORWARDER_JOB_NAME)
+    override val jobName: String = config.get(GMAIL_FORWARDER_JOB_NAME)
 
-        companion object: JobCompanion {
+    companion object: JobCompanion {
 
-            sealed class GmailForwarderConfigItem : RequiredConfigItem {
-                object GMAIL_FORWARDER_JOB_NAME : GmailForwarderConfigItem()
-                object GMAIL_FORWARDER_GMAIL_CLIENT_SECRET : GmailForwarderConfigItem()
-                object GMAIL_FORWARDER_GMAIL_ACCESS_TOKEN : GmailForwarderConfigItem()
-                object GMAIL_FORWARDER_GMAIL_REFRESH_TOKEN : GmailForwarderConfigItem()
-                object GMAIL_FORWARDER_DROPBOX_ACCESS_TOKEN : GmailForwarderConfigItem()
-                object GMAIL_FORWARDER_GMAIL_QUERY : GmailForwarderConfigItem()
-                object GMAIL_FORWARDER_RUN_ON_DAYS : GmailForwarderConfigItem()
-                object GMAIL_FORWARDER_FROM_ADDRESS : GmailForwarderConfigItem()
-                object GMAIL_FORWARDER_FROM_FULLNAME : GmailForwarderConfigItem()
-                object GMAIL_FORWARDER_TO_ADDRESS : GmailForwarderConfigItem()
-                object GMAIL_FORWARDER_TO_FULLNAME : GmailForwarderConfigItem()
-                object GMAIL_FORWARDER_BCC_ADDRESS : GmailForwarderConfigItem()
-            }
-
-            class GmailForwarderConfig: RequiredConfig {
-                override fun values() = setOf(
-                    GMAIL_FORWARDER_JOB_NAME,
-                    GMAIL_FORWARDER_GMAIL_CLIENT_SECRET,
-                    GMAIL_FORWARDER_GMAIL_ACCESS_TOKEN,
-                    GMAIL_FORWARDER_GMAIL_REFRESH_TOKEN,
-                    GMAIL_FORWARDER_DROPBOX_ACCESS_TOKEN,
-                    GMAIL_FORWARDER_GMAIL_QUERY,
-                    GMAIL_FORWARDER_RUN_ON_DAYS,
-                    GMAIL_FORWARDER_FROM_ADDRESS,
-                    GMAIL_FORWARDER_FROM_FULLNAME,
-                    GMAIL_FORWARDER_TO_ADDRESS,
-                    GMAIL_FORWARDER_TO_FULLNAME,
-                    GMAIL_FORWARDER_BCC_ADDRESS
-                )
-            }
-
-            override fun initialise(): GmailForwarder {
-                val config = Configurator(GmailForwarderConfig(), Paths.get("credentials"))
-                val gmailSecrets = GmailSecrets(
-                        config.get(GMAIL_FORWARDER_GMAIL_CLIENT_SECRET),
-                        config.get(GMAIL_FORWARDER_GMAIL_ACCESS_TOKEN),
-                        config.get(GMAIL_FORWARDER_GMAIL_REFRESH_TOKEN)
-                )
-                val gmail = AuthorisedGmailProvider(4000, config.get(GMAIL_FORWARDER_JOB_NAME), gmailSecrets, config).gmail()
-                val gmailClient = HttpGmailClient(gmail)
-                val dropboxClient = HttpDropboxClient(config.get(GMAIL_FORWARDER_JOB_NAME), config.get(GMAIL_FORWARDER_DROPBOX_ACCESS_TOKEN))
-                return GmailForwarder(gmailClient, dropboxClient, config)
-            }
+        sealed class GmailForwarderConfigItem : RequiredConfigItem {
+            object GMAIL_FORWARDER_JOB_NAME : GmailForwarderConfigItem()
+            object GMAIL_FORWARDER_GMAIL_CLIENT_SECRET : GmailForwarderConfigItem()
+            object GMAIL_FORWARDER_GMAIL_ACCESS_TOKEN : GmailForwarderConfigItem()
+            object GMAIL_FORWARDER_GMAIL_REFRESH_TOKEN : GmailForwarderConfigItem()
+            object GMAIL_FORWARDER_DROPBOX_ACCESS_TOKEN : GmailForwarderConfigItem()
+            object GMAIL_FORWARDER_GMAIL_QUERY : GmailForwarderConfigItem()
+            object GMAIL_FORWARDER_RUN_ON_DAYS : GmailForwarderConfigItem()
+            object GMAIL_FORWARDER_FROM_ADDRESS : GmailForwarderConfigItem()
+            object GMAIL_FORWARDER_FROM_FULLNAME : GmailForwarderConfigItem()
+            object GMAIL_FORWARDER_TO_ADDRESS : GmailForwarderConfigItem()
+            object GMAIL_FORWARDER_TO_FULLNAME : GmailForwarderConfigItem()
+            object GMAIL_FORWARDER_BCC_ADDRESS : GmailForwarderConfigItem()
         }
+
+        class GmailForwarderConfig: RequiredConfig {
+            override fun values() = setOf(
+                GMAIL_FORWARDER_JOB_NAME,
+                GMAIL_FORWARDER_GMAIL_CLIENT_SECRET,
+                GMAIL_FORWARDER_GMAIL_ACCESS_TOKEN,
+                GMAIL_FORWARDER_GMAIL_REFRESH_TOKEN,
+                GMAIL_FORWARDER_DROPBOX_ACCESS_TOKEN,
+                GMAIL_FORWARDER_GMAIL_QUERY,
+                GMAIL_FORWARDER_RUN_ON_DAYS,
+                GMAIL_FORWARDER_FROM_ADDRESS,
+                GMAIL_FORWARDER_FROM_FULLNAME,
+                GMAIL_FORWARDER_TO_ADDRESS,
+                GMAIL_FORWARDER_TO_FULLNAME,
+                GMAIL_FORWARDER_BCC_ADDRESS
+            )
+        }
+
+        override fun initialise(): GmailForwarder {
+            val config = Configurator(GmailForwarderConfig(), Paths.get("credentials"))
+            val gmailSecrets = GmailSecrets(
+                    config.get(GMAIL_FORWARDER_GMAIL_CLIENT_SECRET),
+                    config.get(GMAIL_FORWARDER_GMAIL_ACCESS_TOKEN),
+                    config.get(GMAIL_FORWARDER_GMAIL_REFRESH_TOKEN)
+            )
+            val gmail = AuthorisedGmailProvider(4000, config.get(GMAIL_FORWARDER_JOB_NAME), gmailSecrets, config).gmail()
+            val gmailClient = HttpGmailClient(gmail)
+            val dropboxClient = HttpDropboxClient(config.get(GMAIL_FORWARDER_JOB_NAME), config.get(GMAIL_FORWARDER_DROPBOX_ACCESS_TOKEN))
+            return GmailForwarder(gmailClient, dropboxClient, config)
+        }
+    }
 
     override fun run(now: ZonedDateTime): String {
         val appStateMetadata = FlatFileApplicationStateMetadata("/gmailer_state.json", GmailForwarderState::class.java)
