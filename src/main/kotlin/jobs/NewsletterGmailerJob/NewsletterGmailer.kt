@@ -5,6 +5,8 @@ import config.Configurator
 import config.RequiredConfig
 import config.RequiredConfigItem
 import datastore.ApplicationState
+import datastore.DropboxDatastore
+import datastore.FlatFileApplicationStateMetadata
 import datastore.HttpDropboxClient
 import datastore.SimpleDropboxClient
 import gmail.AuthorisedGmailProvider
@@ -24,7 +26,11 @@ import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerCo
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_RUN_ON_DAYS
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_TO_ADDRESS
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_TO_FULLNAME
+import jobs.NewsletterGmailerJob.NewsletterGmailerStatus.CLEANING_THIS_WEEK
+import jobs.NewsletterGmailerJob.NewsletterGmailerStatus.NOT_CLEANING_THIS_WEEK
+import result.Result.Success
 import java.nio.file.Paths
+import java.time.LocalDate
 import java.time.ZonedDateTime
 
 class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val dropboxClient: SimpleDropboxClient, private val config: Configuration): Job {
@@ -77,8 +83,28 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
     }
 
     override fun run(now: ZonedDateTime): String {
-        return "Milford is cleaning this week - an email has been sent to all members.\nCurrent state has been stored in Dropbox"
+        val appStateMetadata = FlatFileApplicationStateMetadata("/newsletter_gmailer.json", NewsletterGmailerState::class.java)
+        val currentApplicationState = DropboxDatastore(dropboxClient, appStateMetadata).currentApplicationState()
+
+        val successfulAppState = currentApplicationState as Success
+        return when (successfulAppState.value.status) {
+            CLEANING_THIS_WEEK     -> "Milford is cleaning this week - an email has been sent to all members.\nCurrent state has been stored in Dropbox"
+            NOT_CLEANING_THIS_WEEK -> "There is no cleaning this week - an email reminder has been sent to Carla who is cleaning next week.\nCurrent state has been stored in Dropbox"
+        }
     }
 }
 
-data class NewsletterGmailerState(val placeholder: String) : ApplicationState
+data class NewsletterGmailerState(
+        val status: NewsletterGmailerStatus,
+        val cleaner: Member?,
+        val nextUp: Member,
+        val lastRanOn: LocalDate,
+        val emailContents: String
+) : ApplicationState
+
+data class Member(val name: String, val surname: String?, val email: String)
+
+enum class NewsletterGmailerStatus {
+    CLEANING_THIS_WEEK,
+    NOT_CLEANING_THIS_WEEK
+}

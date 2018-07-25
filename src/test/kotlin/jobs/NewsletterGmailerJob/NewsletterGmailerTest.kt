@@ -38,16 +38,15 @@ class NewsletterGmailerTest {
           |  "status": "CLEANING_THIS_WEEK",
           |  "cleaner": {
           |    "name": "Milford",
-          |    "surname": null,
           |    "email": "milford@graves.com"
           |  },
-          |  "nextUp:" {
+          |  "nextUp": {
           |    "name": "Carla",
-          |    "surname": "",
-          |    "email": carla@azar.com"
+          |    "surname": "Azar",
+          |    "email": "carla@azar.com"
           |  },
           |  "lastRanOn": "2018-07-20",
-          |  "emailContents": "some contents"
+          |  "emailContents": "some announcement contents"
           |}
           |""".trimMargin()
         val stateFile = FileLike("/newsletter_gmailer.json", state)
@@ -56,6 +55,31 @@ class NewsletterGmailerTest {
         val jobResult = NewsletterGmailer(StubGmailClient(emptyList()), dropboxClient, config).run(time)
         assertThat(jobResult, equalTo(
                 "Milford is cleaning this week - an email has been sent to all members.\n" +
+                        "Current state has been stored in Dropbox")
+        )
+    }
+
+    @Test
+    fun `Happy path when no cleaning shift scheduled this week`() {
+        val state =
+                """
+          |{
+          |  "status": "NOT_CLEANING_THIS_WEEK",
+          |  "nextUp": {
+          |    "name": "Carla",
+          |    "surname": "Azar",
+          |    "email": "carla@azar.com"
+          |  },
+          |  "lastRanOn": "2018-07-27",
+          |  "emailContents": "some reminder contents"
+          |}
+          |""".trimMargin()
+        val stateFile = FileLike("/newsletter_gmailer.json", state)
+
+        val dropboxClient = StubDropboxClient(listOf(stateFile))
+        val jobResult = NewsletterGmailer(StubGmailClient(emptyList()), dropboxClient, config).run(time)
+        assertThat(jobResult, equalTo(
+                "There is no cleaning this week - an email reminder has been sent to Carla who is cleaning next week.\n" +
                         "Current state has been stored in Dropbox")
         )
     }
