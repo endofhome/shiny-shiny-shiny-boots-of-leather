@@ -53,7 +53,8 @@ import java.time.ZonedDateTime
 import javax.mail.Message.RecipientType
 import javax.mail.internet.InternetAddress
 
-class GmailForwarder(override val jobName: String, private val gmailClient: SimpleGmailClient, private val dropboxClient: SimpleDropboxClient, private val config: Configuration): Job {
+class GmailForwarder(private val gmailClient: SimpleGmailClient, private val dropboxClient: SimpleDropboxClient, private val config: Configuration): Job {
+        override val jobName: String = config.get(GMAIL_FORWARDER_JOB_NAME)
 
         companion object: JobCompanion {
 
@@ -99,7 +100,7 @@ class GmailForwarder(override val jobName: String, private val gmailClient: Simp
                 val gmail = AuthorisedGmailProvider(4000, config.get(GMAIL_FORWARDER_JOB_NAME), gmailSecrets, config).gmail()
                 val gmailClient = HttpGmailClient(gmail)
                 val dropboxClient = HttpDropboxClient(config.get(GMAIL_FORWARDER_JOB_NAME), config.get(GMAIL_FORWARDER_DROPBOX_ACCESS_TOKEN))
-                return GmailForwarder(config.get(GMAIL_FORWARDER_JOB_NAME), gmailClient, dropboxClient, config)
+                return GmailForwarder(gmailClient, dropboxClient, config)
             }
         }
 

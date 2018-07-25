@@ -51,7 +51,7 @@ class GmailForwarderAcceptanceTest {
 
         val dropboxClient = StubDropboxClient(listOf(stateFile))
         val emails = listOf(Message().setRaw("New email data"))
-        val jobResult = GmailForwarder("unused", StubGmailClient(emails), dropboxClient, config).run(time)
+        val jobResult = GmailForwarder(StubGmailClient(emails), dropboxClient, config).run(time)
         assertThat(jobResult, equalTo(
                 "New email has been sent\n" +
                 "Current state has been stored in Dropbox")
@@ -71,7 +71,7 @@ class GmailForwarderAcceptanceTest {
 
         val dropboxClient = StubDropboxClient(listOf(stateFile))
         val emails = listOf(Message().setRaw("New email data"))
-        val jobResult = GmailForwarder("unused", StubGmailClient(emails), dropboxClient, config).run(time)
+        val jobResult = GmailForwarder(StubGmailClient(emails), dropboxClient, config).run(time)
         assertThat(jobResult, equalTo("Exiting, email has already been sent for June 2018"))
     }
 
@@ -88,7 +88,7 @@ class GmailForwarderAcceptanceTest {
 
         val dropboxClient = StubDropboxClient(listOf(stateFile))
         val emails = listOf(Message().setRaw("Last month's email data"))
-        val jobResult = GmailForwarder("unused", StubGmailClient(emails), dropboxClient, config).run(time)
+        val jobResult = GmailForwarder(StubGmailClient(emails), dropboxClient, config).run(time)
         assertThat(jobResult, equalTo("Exiting due to invalid state, previous email appears to have been sent in the future"))
     }
 
@@ -115,7 +115,7 @@ class GmailForwarderAcceptanceTest {
           |     ________________________________
           |     Already sent this one
           """.trimMargin()))
-        val jobResult = GmailForwarder("unused", StubGmailClient(emails), dropboxClient, config).run(time)
+        val jobResult = GmailForwarder(StubGmailClient(emails), dropboxClient, config).run(time)
         assertThat(jobResult, equalTo("Exiting as this exact email has already been sent"))
     }
 
@@ -138,7 +138,7 @@ class GmailForwarderAcceptanceTest {
                                      .apply { set(GMAIL_FORWARDER_RUN_ON_DAYS, "2, 11,12, 31 ") }
                                      .toMap()
         )
-        val jobResult = GmailForwarder("unused", StubGmailClient(emails), dropboxClient, localConfig).run(firstOfJune)
+        val jobResult = GmailForwarder(StubGmailClient(emails), dropboxClient, localConfig).run(firstOfJune)
         assertThat(jobResult, equalTo("No need to run - day of month is 1, only running on day 2, 11, 12, 31 of each month"))
     }
 
@@ -155,7 +155,7 @@ class GmailForwarderAcceptanceTest {
 
         val dropboxClient = StubDropboxClient(listOf(stateFile))
         val emails = listOf(Message().setRaw("New email data"))
-        val jobResult = GmailForwarder("unused", StubGmailClientThatCannotSend(emails), dropboxClient, config).run(time)
+        val jobResult = GmailForwarder(StubGmailClientThatCannotSend(emails), dropboxClient, config).run(time)
         assertThat(jobResult, equalTo("Error - could not send email/s"))
     }
 
@@ -172,7 +172,7 @@ class GmailForwarderAcceptanceTest {
 
         val dropboxClient = StubDropboxClientThatCannotStore(listOf(stateFile))
         val emails = listOf(Message().setRaw("New email data"))
-        val jobResult = GmailForwarder("unused", StubGmailClient(emails), dropboxClient, config).run(time)
+        val jobResult = GmailForwarder(StubGmailClient(emails), dropboxClient, config).run(time)
         assertThat(jobResult, equalTo("New email has been sent\nError - could not store state in Dropbox"))
     }
 
@@ -189,7 +189,7 @@ class GmailForwarderAcceptanceTest {
 
         val dropboxClient = StubDropboxClient(listOf(stateFile))
         val emails = listOf(Message().setRaw("New email data"))
-        val jobResult = GmailForwarder("unused", StubGmailClientThatCannotRetrieveRawContent(emails), dropboxClient, config).run(time)
+        val jobResult = GmailForwarder(StubGmailClientThatCannotRetrieveRawContent(emails), dropboxClient, config).run(time)
         assertThat(jobResult, equalTo("Error - could not get raw message content for email"))
     }
 
@@ -210,7 +210,7 @@ class GmailForwarderAcceptanceTest {
                                      .apply { set(GMAIL_FORWARDER_GMAIL_QUERY, "some search query") }
                                      .toMap()
         )
-        val jobResult = GmailForwarder("unused", StubGmailClientThatReturnsNoMatches(emptyList()), dropboxClient, localConfig).run(time)
+        val jobResult = GmailForwarder(StubGmailClientThatReturnsNoMatches(emptyList()), dropboxClient, localConfig).run(time)
         assertThat(jobResult, equalTo("No matching results for query: 'some search query'"))
     }
 
@@ -218,7 +218,7 @@ class GmailForwarderAcceptanceTest {
     fun `Error message is provided when state file does not exist in Dropbox`() {
         val dropboxClient = StubDropboxClient(emptyList())
         val emails = listOf(Message().setRaw("New email data"))
-        val jobResult = GmailForwarder("unused", StubGmailClient(emails), dropboxClient, config).run(time)
+        val jobResult = GmailForwarder(StubGmailClient(emails), dropboxClient, config).run(time)
         assertThat(jobResult, equalTo("Error downloading file /gmailer_state.json from Dropbox"))
     }
 }
