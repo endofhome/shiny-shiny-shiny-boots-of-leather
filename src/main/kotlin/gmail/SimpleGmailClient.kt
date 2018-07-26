@@ -10,9 +10,11 @@ import result.Result
 import result.Result.Failure
 import result.Result.Success
 import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.util.Properties
 import javax.mail.Session
+import javax.mail.internet.InternetAddress
 import javax.mail.internet.MimeMessage
 
 interface SimpleGmailClient {
@@ -56,5 +58,24 @@ class HttpGmailClient(private val gmail: Gmail) : SimpleGmailClient {
 
     private fun messages(): Messages {
         return gmail.users().messages()
+    }
+}
+
+data class Email(val from: InternetAddress, val to: InternetAddress, val bcc: InternetAddress, val subject: String, val body: String) {
+    fun toGmailMessage(): Message {
+        val fromAddress = this.from
+        val emailSubject = this.subject
+        val byteArrayOutputStream = ByteArrayOutputStream()
+        MimeMessage(Session.getDefaultInstance(Properties())).run {
+            setFrom(fromAddress)
+            addRecipients(javax.mail.Message.RecipientType.TO, arrayOf(to))
+            addRecipients(javax.mail.Message.RecipientType.BCC, arrayOf(bcc))
+            setSubject(emailSubject)
+            setText(body)
+            writeTo(byteArrayOutputStream)
+        }
+
+        val base64String = java.util.Base64.getUrlEncoder().encodeToString(byteArrayOutputStream.toByteArray())
+        return Message().run { setRaw(base64String) }
     }
 }
