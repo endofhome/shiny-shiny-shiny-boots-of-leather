@@ -38,6 +38,10 @@ class CouldNotSendEmail : Err {
     override val message = "Error - could not send email/s"
 }
 
+class NotAListOfEmailAddresses(string: String) : Err {
+    override val message = "Error - $string is not a list of valid email address"
+}
+
 class UnknownError : Err {
     override val message = "Exiting due to unknown error"
 

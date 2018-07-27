@@ -3,7 +3,6 @@ package gmail
 import com.google.api.services.gmail.model.Message
 import com.natpryce.hamkrest.assertion.assertThat
 import com.natpryce.hamkrest.equalTo
-import config.osNewline
 import org.junit.Test
 import java.io.ByteArrayOutputStream
 import java.util.Base64
@@ -19,8 +18,8 @@ class EmailTest {
     @Test
     fun `can produce a Gmail Message`() {
         val from = InternetAddress("bob@example.com", "Bob")
-        val to = InternetAddress("jim@example.com", "Jim")
-        val bcc = InternetAddress("harry@example.com", "Harry")
+        val to = listOf(InternetAddress("jim@example.com", "Jim"))
+        val bcc = listOf(InternetAddress("harry@example.com", "Harry"))
         val subject = "Incredible deals"
         val body = "Wow, amazement, incredible"
         val email = Email(from, to, bcc, subject, body)
@@ -28,25 +27,27 @@ class EmailTest {
         val byteArrayOutputStream = ByteArrayOutputStream()
         MimeMessage(Session.getDefaultInstance(Properties())).run {
             setFrom(from)
-            addRecipients(TO, arrayOf(to))
-            addRecipients(BCC, arrayOf(bcc))
+            addRecipients(TO, to.toTypedArray())
+            addRecipients(BCC, bcc.toTypedArray())
             setSubject(subject)
             setText(body)
             writeTo(byteArrayOutputStream)
         }
         val base64String = Base64.getUrlEncoder().encodeToString(byteArrayOutputStream.toByteArray())
         val expectedMessage: Message = Message().setRaw(base64String)
-        assertThat(email.toGmailMessage().decodeRawAsStringWithoutMessageId(), equalTo(expectedMessage.decodeRawAsStringWithoutMessageId()))
-
+        assertEmailEqual(email.toGmailMessage(), expectedMessage)
     }
+}
 
-    private fun Message.decodeRawAsStringWithoutMessageId(): String? {
-        return GoogleBase64(true).decode(raw)
+fun assertEmailEqual(actual: Message, expected: Message) {
+    fun ByteArray.asString() = String(this)
+    fun Message.decodeRawAsStringWithoutMessageId(): String? {
+        return com.google.api.client.repackaged.org.apache.commons.codec.binary.Base64(true).decode(raw)
                 .asString()
-                .split(osNewline)
+                .split("\n")
                 .filterNot { it.startsWith("Message-ID:") }
                 .joinToString()
     }
 
-    private fun ByteArray.asString() = String(this)
+    assertThat(actual.decodeRawAsStringWithoutMessageId(), equalTo(expected.decodeRawAsStringWithoutMessageId()))
 }

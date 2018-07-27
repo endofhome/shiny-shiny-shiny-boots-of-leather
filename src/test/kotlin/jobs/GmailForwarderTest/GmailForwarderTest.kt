@@ -224,6 +224,8 @@ class GmailForwarderAcceptanceTest {
 }
 
 open class StubGmailClient(private val emails: List<Message>) : SimpleGmailClient {
+    val sentMail = mutableListOf<Message>()
+
     override fun lastEmailForQuery(queryString: String): Message? {
         return emails.last()
     }
@@ -231,7 +233,10 @@ open class StubGmailClient(private val emails: List<Message>) : SimpleGmailClien
     override fun rawContentOf(cookedMessage: Message): ByteArray? =
             cookedMessage.raw.toByteArray()
 
-    override fun send(message: Message): Result<CouldNotSendEmail, Message> = Success(message)
+    override fun send(message: Message): Result<CouldNotSendEmail, Message> {
+        sentMail.add(message)
+        return Success(message)
+    }
 }
 
 class StubGmailClientThatCannotSend(emails: List<Message>) : StubGmailClient(emails) {

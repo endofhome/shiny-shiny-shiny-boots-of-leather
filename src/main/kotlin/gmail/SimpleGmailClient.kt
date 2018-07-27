@@ -61,15 +61,15 @@ class HttpGmailClient(private val gmail: Gmail) : SimpleGmailClient {
     }
 }
 
-data class Email(val from: InternetAddress, val to: InternetAddress, val bcc: InternetAddress, val subject: String, val body: String) {
+data class Email(val from: InternetAddress, val to: List<InternetAddress>, val bcc: List<InternetAddress>, val subject: String, val body: String) {
     fun toGmailMessage(): Message {
         val fromAddress = this.from
         val emailSubject = this.subject
         val byteArrayOutputStream = ByteArrayOutputStream()
         MimeMessage(Session.getDefaultInstance(Properties())).run {
             setFrom(fromAddress)
-            addRecipients(javax.mail.Message.RecipientType.TO, arrayOf(to))
-            addRecipients(javax.mail.Message.RecipientType.BCC, arrayOf(bcc))
+            addRecipients(javax.mail.Message.RecipientType.TO, to.toTypedArray())
+            addRecipients(javax.mail.Message.RecipientType.BCC, bcc.toTypedArray())
             setSubject(emailSubject)
             setText(body)
             writeTo(byteArrayOutputStream)
