@@ -130,7 +130,7 @@ class NewsletterGmailerTest {
 
         assertEmailEqual(gmailClient.sentMail.last(), expectedEmail)
         assertThat(jobResult, equalTo(
-                "There is no cleaning this week - an email reminder has been sent to Carla who is cleaning next week.\n" +
+                "There is no cleaning this week - an email reminder has been sent to Carla Azar who is cleaning next week.\n" +
                         "Current state has been stored in Dropbox")
         )
     }

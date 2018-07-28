@@ -114,12 +114,12 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
         val successfulAppState = currentApplicationState as Success
         val successfulMembers = currentMembers as Success
         return when (successfulAppState.value.status) {
-            CLEANING_THIS_WEEK     -> sendCleaningNotice(successfulMembers.value)
-            NOT_CLEANING_THIS_WEEK -> sendRotaReminder(successfulMembers.value)
+            CLEANING_THIS_WEEK     -> sendCleaningNotice(successfulAppState.value, successfulMembers.value)
+            NOT_CLEANING_THIS_WEEK -> sendRotaReminder(successfulAppState.value, successfulMembers.value)
         }
     }
 
-    private fun sendCleaningNotice(members: Members): String {
+    private fun sendCleaningNotice(currentState: NewsletterGmailerState, members: Members): String {
         val from = InternetAddress(
                 config.get(NEWSLETTER_GMAILER_FROM_ADDRESS),
                 config.get(NEWSLETTER_GMAILER_FROM_FULLNAME)
@@ -131,11 +131,11 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
         val body = config.get(NEWSLETTER_BODY_A)
         val email = Email(from, to, bcc, subject, body)
         return gmailClient.send(email.toGmailMessage())
-                .map { "Milford is cleaning this week - an email has been sent to all members.\nCurrent state has been stored in Dropbox" }
+                .map { "${currentState.cleaner?.fullname()} is cleaning this week - an email has been sent to all members.\nCurrent state has been stored in Dropbox" }
                 .orElse { "" }
     }
 
-    private fun sendRotaReminder(members: Members): String {
+    private fun sendRotaReminder(currentState: NewsletterGmailerState, members: Members): String {
     val from = InternetAddress(
             config.get(NEWSLETTER_GMAILER_FROM_ADDRESS),
             config.get(NEWSLETTER_GMAILER_FROM_FULLNAME)
@@ -147,7 +147,7 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
     val body = config.get(NEWSLETTER_BODY_B)
     val email = Email(from, to, bcc, subject, body)
     return gmailClient.send(email.toGmailMessage())
-                      .map { "There is no cleaning this week - an email reminder has been sent to Carla who is cleaning next week.\nCurrent state has been stored in Dropbox" }
+                      .map { "There is no cleaning this week - an email reminder has been sent to ${currentState.nextUp.fullname()} who is cleaning next week.\nCurrent state has been stored in Dropbox" }
                       .orElse { "" }
     }
 
@@ -172,7 +172,9 @@ data class NewsletterGmailerState(
 
 data class Member(val name: String, val surname: String?, val email: String) {
     fun internetAddress(): InternetAddress =
-            InternetAddress(email, "$name${surname?.let { " $it" } ?: ""}")
+            InternetAddress(email, fullname())
+
+    fun fullname(): String = "$name${surname?.let { " $it" } ?: ""}"
 }
 
 data class Members(val members: List<Member>): ApplicationState {
