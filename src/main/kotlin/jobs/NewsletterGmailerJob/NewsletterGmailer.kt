@@ -1,5 +1,6 @@
 package jobs.NewsletterGmailerJob
 
+import com.github.jknack.handlebars.Handlebars
 import config.Configuration
 import config.Configurator
 import config.RequiredConfig
@@ -31,8 +32,9 @@ import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerCo
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_TO_FULLNAME
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_SUBJECT_A
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_SUBJECT_B
-import jobs.NewsletterGmailerJob.NewsletterGmailerStatus.CLEANING_THIS_WEEK
-import jobs.NewsletterGmailerJob.NewsletterGmailerStatus.NOT_CLEANING_THIS_WEEK
+import jobs.NewsletterGmailerJob.NewsletterGmailer.NewsletterGmailerStatus
+import jobs.NewsletterGmailerJob.NewsletterGmailer.NewsletterGmailerStatus.CLEANING_THIS_WEEK
+import jobs.NewsletterGmailerJob.NewsletterGmailer.NewsletterGmailerStatus.NOT_CLEANING_THIS_WEEK
 import result.NotAListOfEmailAddresses
 import result.Result
 import result.Result.Failure
@@ -114,12 +116,16 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
         val successfulAppState = currentApplicationState as Success
         val successfulMembers = currentMembers as Success
         return when (successfulAppState.value.status) {
-            CLEANING_THIS_WEEK     -> sendCleaningNotice(successfulAppState.value, successfulMembers.value)
-            NOT_CLEANING_THIS_WEEK -> sendRotaReminder(successfulAppState.value, successfulMembers.value)
+            CLEANING_THIS_WEEK     -> sendEmail(cleaningContext, successfulMembers.value, successfulAppState.value.cleaner!!)
+            NOT_CLEANING_THIS_WEEK -> sendEmail(notCleaningContext, successfulMembers.value, successfulAppState.value.nextUp)
         }
     }
 
-    private fun sendCleaningNotice(currentState: NewsletterGmailerState, members: Members): String {
+    data class Context(val emailSubject: String, val emailBody: String, val successTemplate: String)
+    private val cleaningContext = Context(config.get(NEWSLETTER_SUBJECT_A), config.get(NEWSLETTER_BODY_A), "{{this}} is cleaning this week - an email has been sent to all members.\nCurrent state has been stored in Dropbox")
+    private val notCleaningContext = Context(config.get(NEWSLETTER_SUBJECT_B), config.get(NEWSLETTER_BODY_B), "There is no cleaning this week - an email reminder has been sent to {{this}} who is cleaning next week.\nCurrent state has been stored in Dropbox")
+
+    private fun sendEmail(context: Context, members: Members, nextCleaner: Member): String {
         val from = InternetAddress(
                 config.get(NEWSLETTER_GMAILER_FROM_ADDRESS),
                 config.get(NEWSLETTER_GMAILER_FROM_FULLNAME)
@@ -127,28 +133,12 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
         val to = members.allInternetAddresses()
         val bccResult = config.get(NEWSLETTER_GMAILER_BCC_ADDRESS).toInternetAddresses()
         val bcc = (bccResult as Success).value
-        val subject = config.get(NEWSLETTER_SUBJECT_A)
-        val body = config.get(NEWSLETTER_BODY_A)
+        val subject = context.emailSubject
+        val body = context.emailBody
         val email = Email(from, to, bcc, subject, body)
         return gmailClient.send(email.toGmailMessage())
-                .map { "${currentState.cleaner?.fullname()} is cleaning this week - an email has been sent to all members.\nCurrent state has been stored in Dropbox" }
-                .orElse { "" }
-    }
-
-    private fun sendRotaReminder(currentState: NewsletterGmailerState, members: Members): String {
-    val from = InternetAddress(
-            config.get(NEWSLETTER_GMAILER_FROM_ADDRESS),
-            config.get(NEWSLETTER_GMAILER_FROM_FULLNAME)
-    )
-    val to = members.allInternetAddresses()
-    val bccResult = config.get(NEWSLETTER_GMAILER_BCC_ADDRESS).toInternetAddresses()
-    val bcc = (bccResult as Success).value
-    val subject = config.get(NEWSLETTER_SUBJECT_B)
-    val body = config.get(NEWSLETTER_BODY_B)
-    val email = Email(from, to, bcc, subject, body)
-    return gmailClient.send(email.toGmailMessage())
-                      .map { "There is no cleaning this week - an email reminder has been sent to ${currentState.nextUp.fullname()} who is cleaning next week.\nCurrent state has been stored in Dropbox" }
-                      .orElse { "" }
+                          .map { Handlebars().compileInline(context.successTemplate).apply(nextCleaner.fullname()) }
+                          .orElse { "" }
     }
 
     private fun String.toInternetAddresses(delimiter: Char = ','): Result<NotAListOfEmailAddresses, List<InternetAddress>> =
@@ -160,6 +150,15 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
                 else                -> throw e
             }
         }
+
+    enum class NewsletterGmailerStatus {
+        CLEANING_THIS_WEEK,
+        NOT_CLEANING_THIS_WEEK
+    }
+
+    data class Members(val members: List<Member>): ApplicationState {
+        fun allInternetAddresses(): List<InternetAddress> = members.map { it.internetAddress() }
+    }
 }
 
 data class NewsletterGmailerState(
@@ -177,11 +176,3 @@ data class Member(val name: String, val surname: String?, val email: String) {
     fun fullname(): String = "$name${surname?.let { " $it" } ?: ""}"
 }
 
-data class Members(val members: List<Member>): ApplicationState {
-    fun allInternetAddresses(): List<InternetAddress> = members.map { it.internetAddress() }
-}
-
-enum class NewsletterGmailerStatus {
-    CLEANING_THIS_WEEK,
-    NOT_CLEANING_THIS_WEEK
-}

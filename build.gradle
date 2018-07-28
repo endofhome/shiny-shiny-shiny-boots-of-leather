@@ -34,6 +34,7 @@ dependencies {
     compile "com.fasterxml.jackson.core:jackson-databind:$jackson_version"
     compile "com.fasterxml.jackson.module:jackson-module-kotlin:$jackson_version"
     compile "com.fasterxml.jackson.datatype:jackson-datatype-jsr310:$jackson_version"
+    compile group: 'com.github.jknack', name: 'handlebars', version: '4.0.6'
 
     testCompile 'junit:junit:4.12'
     testCompile 'com.natpryce:hamkrest:1.4.2.0'
