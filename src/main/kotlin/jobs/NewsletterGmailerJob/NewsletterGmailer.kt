@@ -9,7 +9,6 @@ import datastore.ApplicationState
 import datastore.DropboxDatastore
 import datastore.FlatFileApplicationStateMetadata
 import datastore.HttpDropboxClient
-import datastore.SimpleDropboxClient
 import gmail.AuthorisedGmailProvider
 import gmail.Email
 import gmail.GmailSecrets
@@ -47,7 +46,7 @@ import java.time.ZonedDateTime
 import javax.mail.internet.AddressException
 import javax.mail.internet.InternetAddress
 
-class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val dropboxClient: SimpleDropboxClient, private val config: Configuration): Job {
+class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val appStateDatastore: DropboxDatastore<NewsletterGmailerState>, val membersDatastore: DropboxDatastore<Members>, private val config: Configuration): Job {
     override val jobName: String = config.get(NEWSLETTER_GMAILER_JOB_NAME)
 
     companion object: JobCompanion {
@@ -100,25 +99,25 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
             val gmail = AuthorisedGmailProvider(4000, config.get(NEWSLETTER_GMAILER_JOB_NAME), gmailSecrets, config).gmail()
             val gmailClient = HttpGmailClient(gmail)
             val dropboxClient = HttpDropboxClient(config.get(NEWSLETTER_GMAILER_JOB_NAME), config.get(NEWSLETTER_GMAILER_DROPBOX_ACCESS_TOKEN))
-            return NewsletterGmailer(gmailClient, dropboxClient, config)
+            val appStateMetadata = FlatFileApplicationStateMetadata("/newsletter_gmailer.json", NewsletterGmailerState::class.java)
+            val appStateDatastore = DropboxDatastore(dropboxClient, appStateMetadata)
+            val membersMetadata = FlatFileApplicationStateMetadata("/members.json", Members::class.java)
+            val membersDatastore = DropboxDatastore(dropboxClient, membersMetadata)
+            return NewsletterGmailer(gmailClient, appStateDatastore, membersDatastore, config)
         }
     }
 
     override fun run(now: ZonedDateTime): String {
-        val appStateMetadata = FlatFileApplicationStateMetadata("/newsletter_gmailer.json", NewsletterGmailerState::class.java)
-        val appStateDatastore = DropboxDatastore(dropboxClient, appStateMetadata)
         val currentApplicationState = appStateDatastore.currentApplicationState()
-
-        val membersMetadata = FlatFileApplicationStateMetadata("/members.json", Members::class.java)
-        val membersDatastore = DropboxDatastore(dropboxClient, membersMetadata)
         val currentMembers = membersDatastore.currentApplicationState()
 
-        val successfulAppState = currentApplicationState as Success
         val successfulMembers = currentMembers as Success
-        return when (successfulAppState.value.status) {
-            CLEANING_THIS_WEEK     -> sendEmail(cleaningContext, successfulMembers.value, successfulAppState.value.cleaner!!)
-            NOT_CLEANING_THIS_WEEK -> sendEmail(notCleaningContext, successfulMembers.value, successfulAppState.value.nextUp)
-        }
+        return currentApplicationState.map { appState ->
+            when (appState.status) {
+                CLEANING_THIS_WEEK     -> sendEmail(cleaningContext, successfulMembers.value, appState.cleaner!!)
+                NOT_CLEANING_THIS_WEEK -> sendEmail(notCleaningContext, successfulMembers.value, appState.nextUp)
+            }
+        }.orElse { "Error getting current application state - no emails were sent, no state stored in Dropbox." }
     }
 
     data class Context(val emailSubject: String, val emailBody: String, val successTemplate: String)

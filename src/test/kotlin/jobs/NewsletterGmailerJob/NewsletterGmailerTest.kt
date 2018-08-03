@@ -1,9 +1,13 @@
 package jobs.NewsletterGmailerJob
 
+import com.google.api.services.gmail.model.Message
 import com.natpryce.hamkrest.assertion.assertThat
 import com.natpryce.hamkrest.equalTo
 import config.Configuration
 import config.RequiredConfigItem
+import datastore.DropboxDatastore
+import datastore.ErrorDownloadingFileFromDropbox
+import datastore.FlatFileApplicationStateMetadata
 import gmail.Email
 import gmail.assertEmailEqual
 import jobs.GmailForwarderTest.FileLike
@@ -20,6 +24,8 @@ import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerCo
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_SUBJECT_A
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_SUBJECT_B
 import org.junit.Test
+import result.Result
+import result.Result.Failure
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import javax.mail.internet.InternetAddress
@@ -52,6 +58,10 @@ class NewsletterGmailerTest {
           |}
           |""".trimMargin()
     private val membersFile = FileLike("/members.json", membersState)
+    private val appStatefilename = "/newsletter_gmailer.json"
+    private val appStateMetadata = FlatFileApplicationStateMetadata(appStatefilename, NewsletterGmailerState::class.java)
+    private val membersMetadata = FlatFileApplicationStateMetadata(membersFile.name, NewsletterGmailer.Members::class.java)
+
 
     @Test
     fun `Happy path when cleaning this week`() {
@@ -72,7 +82,7 @@ class NewsletterGmailerTest {
           |  "emailContents": "some announcement contents"
           |}
           |""".trimMargin()
-        val stateFile = FileLike("/newsletter_gmailer.json", appState)
+        val stateFile = FileLike(appStatefilename, appState)
 
         val dropboxClient = StubDropboxClient(listOf(stateFile, membersFile))
         val gmailClient = StubGmailClient(emptyList())
@@ -87,7 +97,7 @@ class NewsletterGmailerTest {
                 subject = config.get(NEWSLETTER_SUBJECT_A),
                 body = config.get(NEWSLETTER_BODY_A)
         ).toGmailMessage()
-        val jobResult = NewsletterGmailer(gmailClient, dropboxClient, config).run(time)
+        val jobResult = NewsletterGmailer(gmailClient, DropboxDatastore(dropboxClient, appStateMetadata), DropboxDatastore(dropboxClient, membersMetadata), config).run(time)
 
         assertEmailEqual(gmailClient.sentMail.last(), expectedEmail)
         assertThat(jobResult, equalTo(
@@ -111,7 +121,7 @@ class NewsletterGmailerTest {
           |  "emailContents": "some reminder contents"
           |}
           |""".trimMargin()
-        val stateFile = FileLike("/newsletter_gmailer.json", state)
+        val stateFile = FileLike(appStatefilename, state)
 
         val expectedEmail = Email(
                 from = InternetAddress(
@@ -126,7 +136,7 @@ class NewsletterGmailerTest {
 
         val dropboxClient = StubDropboxClient(listOf(stateFile, membersFile))
         val gmailClient = StubGmailClient(emptyList())
-        val jobResult = NewsletterGmailer(gmailClient, dropboxClient, config).run(time)
+        val jobResult = NewsletterGmailer(gmailClient, DropboxDatastore(dropboxClient, appStateMetadata), DropboxDatastore(dropboxClient, membersMetadata), config).run(time)
 
         assertEmailEqual(gmailClient.sentMail.last(), expectedEmail)
         assertThat(jobResult, equalTo(
@@ -134,4 +144,26 @@ class NewsletterGmailerTest {
                         "Current state has been stored in Dropbox")
         )
     }
+
+    @Test
+    fun `Error message is provided when current application state cannot be retrieved`() {
+        val stateFile = FileLike("don't care", "don't care")
+        val dropboxClientThatCannotRead = StubDropboxClientThatCannotRead()
+        val dropboxClient = StubDropboxClient(listOf(stateFile, membersFile))
+        val gmailClient = StubGmailClient(emptyList())
+
+        val failingAppStateDatastore = DropboxDatastore(dropboxClientThatCannotRead, appStateMetadata)
+        val successfulMembersDatastore = DropboxDatastore(dropboxClient, membersMetadata)
+        val jobResult = NewsletterGmailer(gmailClient, failingAppStateDatastore, successfulMembersDatastore, config).run(time)
+
+        assertThat(gmailClient.sentMail, equalTo(emptyList<Message>()))
+        assertThat(jobResult, equalTo(
+                "Error getting current application state - no emails were sent, no state stored in Dropbox.")
+        )
+    }
+}
+
+class StubDropboxClientThatCannotRead(initialFiles: List<FileLike> = emptyList()) : StubDropboxClient(initialFiles) {
+    override fun readFile(filename: String): Result<ErrorDownloadingFileFromDropbox, String> =
+            Failure(ErrorDownloadingFileFromDropbox())
 }
