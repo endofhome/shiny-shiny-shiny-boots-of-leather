@@ -32,8 +32,7 @@ class HttpGmailClient(private val gmail: Gmail) : SimpleGmailClient {
     private val user = "me"
 
     override fun lastEmailForQuery(queryString: String): Message? {
-        val messages: Messages = messages()
-        val listResponse: ListMessagesResponse? = messages.list(user).setQ(queryString).execute()
+        val listResponse: ListMessagesResponse? = messages().list(user).setQ(queryString).execute()
         return listResponse?.messages?.firstOrNull()
     }
 
