@@ -29,7 +29,7 @@ class HttpDropboxClient(identifier: String, accessToken: String) : SimpleDropbox
     private val client: DbxClientV2 = DbxClientV2(requestConfig, accessToken)
 
     override fun readFile(filename: String): Result<ErrorDownloadingFileFromDropbox, String> {
-        return downloaderFor(filename).flatMap { it.inputStream() }
+        return downloaderFor(filename).flatMap { it.inputStream(filename) }
                                       .fold (
                                          failure = { Failure(it) },
                                          success = { Success(it.reader().readText()) }
@@ -54,12 +54,12 @@ class HttpDropboxClient(identifier: String, accessToken: String) : SimpleDropbox
         }
     }
 
-    private fun DbxDownloader<FileMetadata>.inputStream(): Result<ErrorDownloadingFileFromDropbox, InputStream> {
+    private fun DbxDownloader<FileMetadata>.inputStream(filename: String): Result<ErrorDownloadingFileFromDropbox, InputStream> {
         return try {
             Success(this.inputStream)
         } catch (e: Exception) {
             when (e) {
-                is IllegalStateException -> Failure(ErrorDownloadingFileFromDropbox())
+                is IllegalStateException -> Failure(ErrorDownloadingFileFromDropbox(filename))
                 else -> throw e
             }
         }
@@ -72,7 +72,7 @@ class HttpDropboxClient(identifier: String, accessToken: String) : SimpleDropbox
             } catch (e: Exception) {
                 when (e) {
                     is DownloadErrorException,
-                    is DbxException -> Failure(ErrorDownloadingFileFromDropbox(filename))
+                    is DbxException            -> Failure(ErrorDownloadingFileFromDropbox(filename))
                     else                       -> throw e
                 }
             }

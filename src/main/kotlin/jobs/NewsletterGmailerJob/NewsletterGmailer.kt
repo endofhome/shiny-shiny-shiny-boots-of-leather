@@ -7,6 +7,7 @@ import config.RequiredConfig
 import config.RequiredConfigItem
 import datastore.ApplicationState
 import datastore.DropboxDatastore
+import datastore.ErrorDownloadingFileFromDropbox
 import datastore.FlatFileApplicationStateMetadata
 import datastore.HttpDropboxClient
 import gmail.AuthorisedGmailProvider
@@ -31,6 +32,7 @@ import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerCo
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_TO_FULLNAME
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_SUBJECT_A
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_SUBJECT_B
+import jobs.NewsletterGmailerJob.NewsletterGmailer.Members
 import jobs.NewsletterGmailerJob.NewsletterGmailer.NewsletterGmailerStatus
 import jobs.NewsletterGmailerJob.NewsletterGmailer.NewsletterGmailerStatus.CLEANING_THIS_WEEK
 import jobs.NewsletterGmailerJob.NewsletterGmailer.NewsletterGmailerStatus.NOT_CLEANING_THIS_WEEK
@@ -107,18 +109,30 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
         }
     }
 
-    override fun run(now: ZonedDateTime): String {
-        val currentApplicationState = appStateDatastore.currentApplicationState()
-        val currentMembers = membersDatastore.currentApplicationState()
+    class StateRetriever(private val appStateDatastore: DropboxDatastore<NewsletterGmailerState>, private val membersDatastore: DropboxDatastore<Members>) {
+        fun state(): Result<ErrorDownloadingFileFromDropbox, ExternalState> {
+            val currentApplicationState = appStateDatastore.currentApplicationState()
+            val currentMembers = membersDatastore.currentApplicationState()
 
-        val successfulMembers = currentMembers as Success
-        return currentApplicationState.map { appState ->
-            when (appState.status) {
-                CLEANING_THIS_WEEK     -> sendEmail(cleaningContext, successfulMembers.value, appState.cleaner!!)
-                NOT_CLEANING_THIS_WEEK -> sendEmail(notCleaningContext, successfulMembers.value, appState.nextUp)
+            return when {
+                currentApplicationState is Failure -> Failure(currentApplicationState.reason)
+                currentMembers is Failure          -> Failure(currentMembers.reason)
+                else                               -> Success(ExternalState(
+                                                        (currentApplicationState as Success).value,
+                                                        (currentMembers as Success).value
+                                                      ))
             }
-        }.orElse { "Error getting current application state - no emails were sent, no state stored in Dropbox." }
+        }
     }
+
+    override fun run(now: ZonedDateTime): String =
+        StateRetriever(appStateDatastore, membersDatastore).state().map { state: ExternalState ->
+            val (appState, members) = state
+            when (appState.status) {
+                CLEANING_THIS_WEEK     -> sendEmail(cleaningContext, members, appState.cleaner!!)
+                NOT_CLEANING_THIS_WEEK -> sendEmail(notCleaningContext, members, appState.nextUp)
+            }
+        }.orElse { error -> error.message }
 
     data class Context(val emailSubject: String, val emailBody: String, val successTemplate: String)
     private val cleaningContext = Context(config.get(NEWSLETTER_SUBJECT_A), config.get(NEWSLETTER_BODY_A), "{{this}} is cleaning this week - an email has been sent to all members.\nCurrent state has been stored in Dropbox")
@@ -169,9 +183,10 @@ data class NewsletterGmailerState(
 ) : ApplicationState
 
 data class Member(val name: String, val surname: String?, val email: String) {
+
     fun internetAddress(): InternetAddress =
             InternetAddress(email, fullname())
-
     fun fullname(): String = "$name${surname?.let { " $it" } ?: ""}"
 }
 
+data class ExternalState(val appState: NewsletterGmailerState, val members: Members)

@@ -157,13 +157,43 @@ class NewsletterGmailerTest {
         val jobResult = NewsletterGmailer(gmailClient, failingAppStateDatastore, successfulMembersDatastore, config).run(time)
 
         assertThat(gmailClient.sentMail, equalTo(emptyList<Message>()))
-        assertThat(jobResult, equalTo(
-                "Error getting current application state - no emails were sent, no state stored in Dropbox.")
-        )
+        assertThat(jobResult, equalTo("Error downloading file /newsletter_gmailer.json from Dropbox"))
+    }
+
+    @Test
+    fun `Error message is provided when current members list cannot be retrieved`() {
+        val appState =
+                """
+          |{
+          |  "status": "CLEANING_THIS_WEEK",
+          |  "cleaner": {
+          |    "name": "Milford",
+          |    "email": "milford@graves.com"
+          |  },
+          |  "nextUp": {
+          |    "name": "Carla",
+          |    "surname": "Azar",
+          |    "email": "carla@azar.com"
+          |  },
+          |  "lastRanOn": "2018-07-20",
+          |  "emailContents": "some announcement contents"
+          |}
+          |""".trimMargin()
+        val stateFile = FileLike(appStatefilename, appState)
+        val dropboxClientThatCannotRead = StubDropboxClientThatCannotRead()
+        val dropboxClient = StubDropboxClient(listOf(stateFile, membersFile))
+        val gmailClient = StubGmailClient(emptyList())
+
+        val successfulAppStateDatastore = DropboxDatastore(dropboxClient, appStateMetadata)
+        val failingMembersDatastore = DropboxDatastore(dropboxClientThatCannotRead, membersMetadata)
+        val jobResult = NewsletterGmailer(gmailClient, successfulAppStateDatastore, failingMembersDatastore, config).run(time)
+
+        assertThat(gmailClient.sentMail, equalTo(emptyList<Message>()))
+        assertThat(jobResult, equalTo("Error downloading file /members.json from Dropbox"))
     }
 }
 
 class StubDropboxClientThatCannotRead(initialFiles: List<FileLike> = emptyList()) : StubDropboxClient(initialFiles) {
     override fun readFile(filename: String): Result<ErrorDownloadingFileFromDropbox, String> =
-            Failure(ErrorDownloadingFileFromDropbox())
+            Failure(ErrorDownloadingFileFromDropbox(filename))
 }
