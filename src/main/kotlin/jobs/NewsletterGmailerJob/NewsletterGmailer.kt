@@ -129,21 +129,23 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
         StateRetriever(appStateDatastore, membersDatastore).state().map { state: ExternalState ->
             val (appState, members) = state
             when (appState.status) {
-                CLEANING_THIS_WEEK     -> sendEmail(cleaningContext, members, appState.cleaner!!)
-                NOT_CLEANING_THIS_WEEK -> sendEmail(notCleaningContext, members, appState.nextUp)
+                CLEANING_THIS_WEEK     -> sendEmail(cleaningContext.withRecipients(members.allInternetAddresses()), appState.cleaner!!)
+                NOT_CLEANING_THIS_WEEK -> sendEmail(notCleaningContext.withRecipients(listOf(appState.nextUp.internetAddress())), appState.nextUp)
             }
         }.orElse { error -> error.message }
 
-    data class Context(val emailSubject: String, val emailBody: String, val successTemplate: String)
+    data class Context(val emailSubject: String, val emailBody: String, val successTemplate: String, val recipients: List<InternetAddress> = emptyList()) {
+        fun withRecipients(recipients: List<InternetAddress>) = this.copy(recipients = recipients)
+    }
     private val cleaningContext = Context(config.get(NEWSLETTER_SUBJECT_A), config.get(NEWSLETTER_BODY_A), "{{this}} is cleaning this week - an email has been sent to all members.\nCurrent state has been stored in Dropbox")
     private val notCleaningContext = Context(config.get(NEWSLETTER_SUBJECT_B), config.get(NEWSLETTER_BODY_B), "There is no cleaning this week - an email reminder has been sent to {{this}} who is cleaning next week.\nCurrent state has been stored in Dropbox")
 
-    private fun sendEmail(context: Context, members: Members, nextCleaner: Member): String {
+    private fun sendEmail(context: Context, nextCleaner: Member): String {
         val from = InternetAddress(
                 config.get(NEWSLETTER_GMAILER_FROM_ADDRESS),
                 config.get(NEWSLETTER_GMAILER_FROM_FULLNAME)
         )
-        val to = members.allInternetAddresses()
+        val to = context.recipients
         val bccResult = config.get(NEWSLETTER_GMAILER_BCC_ADDRESS).toInternetAddresses()
         val bcc = (bccResult as Success).value
         val subject = context.emailSubject

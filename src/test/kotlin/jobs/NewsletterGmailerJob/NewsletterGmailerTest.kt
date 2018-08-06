@@ -53,6 +53,11 @@ class NewsletterGmailerTest {
           |    {
           |      "name": "Milford",
           |      "email": "milford@graves.com"
+          |    },
+          |    {
+          |      "name": "Carla",
+          |      "surname": "Azar",
+          |      "email": "carla@azar.com"
           |    }
           |  ]
           |}
@@ -92,7 +97,7 @@ class NewsletterGmailerTest {
                            config.get(NEWSLETTER_GMAILER_FROM_ADDRESS),
                            config.get(NEWSLETTER_GMAILER_FROM_FULLNAME)
                        ),
-                to = listOf(InternetAddress("milford@graves.com", "Milford")),
+                to = listOf(InternetAddress("milford@graves.com", "Milford"), InternetAddress("carla@azar.com", "Carla Azar")),
                 bcc = listOf(InternetAddress(config.get(NEWSLETTER_GMAILER_BCC_ADDRESS))),
                 subject = config.get(NEWSLETTER_SUBJECT_A),
                 body = config.get(NEWSLETTER_BODY_A)
@@ -128,7 +133,7 @@ class NewsletterGmailerTest {
                         config.get(NEWSLETTER_GMAILER_FROM_ADDRESS),
                         config.get(NEWSLETTER_GMAILER_FROM_FULLNAME)
                 ),
-                to = listOf(InternetAddress("milford@graves.com", "Milford")),
+                to = listOf(InternetAddress("carla@azar.com", "Carla Azar")),
                 bcc = listOf(InternetAddress(config.get(NEWSLETTER_GMAILER_BCC_ADDRESS))),
                 subject = config.get(NEWSLETTER_SUBJECT_B),
                 body = config.get(NEWSLETTER_BODY_B)
