@@ -37,10 +37,14 @@ import jobs.NewsletterGmailerJob.NewsletterGmailer.Members
 import jobs.NewsletterGmailerJob.NewsletterGmailer.NewsletterGmailerStatus
 import jobs.NewsletterGmailerJob.NewsletterGmailer.NewsletterGmailerStatus.CLEANING_THIS_WEEK
 import jobs.NewsletterGmailerJob.NewsletterGmailer.NewsletterGmailerStatus.NOT_CLEANING_THIS_WEEK
+import result.NoNeedToRun
+import result.NoNeedToRunAtThisTime
+import result.NoNeedToRunOnThisDay
 import result.NotAListOfEmailAddresses
 import result.Result
 import result.Result.Failure
 import result.Result.Success
+import result.flatMap
 import result.map
 import result.orElse
 import java.nio.file.Paths
@@ -114,28 +118,30 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
         }
     }
 
-    override fun run(now: ZonedDateTime): String {
-        val daysToRun = config.getAsListOfInt(NEWSLETTER_GMAILER_RUN_ON_DAYS)
-        val timeToRunAfter = LocalTime.parse(config.get(NEWSLETTER_GMAILER_RUN_AFTER_TIME), DateTimeFormatter.ofPattern("HH:mm"))
-        val today = now.dayOfMonth
-        if (daysToRun.contains(today).not()) {
-            return "No need to run - day of month is $today, only running on day ${daysToRun.joinToString(", ")} of each month"
-        }
-        if (now.toLocalTime() < timeToRunAfter) {
-            return "No need to run - time is ${now.hour}:${now.minute}, only running after ${timeToRunAfter.hour}:${timeToRunAfter.minute}"
-        }
-
-        return StateRetriever(appStateDatastore, membersDatastore).state().map { state: ExternalState ->
-            val (appState, members) = state
-            when (appState.status) {
-                CLEANING_THIS_WEEK     -> sendEmail(cleaningContext.withRecipients(members.allInternetAddresses()), appState.cleaner!!)
-                NOT_CLEANING_THIS_WEEK -> sendEmail(notCleaningContext.withRecipients(listOf(appState.nextUp.internetAddress())), appState.nextUp)
-            }
-        }.orElse { error -> error.message }
-    }
+    override fun run(now: ZonedDateTime): String =
+        shouldRun(now).flatMap { StateRetriever(appStateDatastore, membersDatastore).state() }
+                      .map { state: ExternalState ->
+                          val (appState, members) = state
+                          when (appState.status) {
+                              CLEANING_THIS_WEEK     -> sendEmail(cleaningContext.withRecipients(members.allInternetAddresses()), appState.cleaner!!)
+                              NOT_CLEANING_THIS_WEEK -> sendEmail(notCleaningContext.withRecipients(listOf(appState.nextUp.internetAddress())), appState.nextUp)
+                          }
+                      }.orElse { error -> error.message }
 
     private val cleaningContext = Context(config.get(NEWSLETTER_SUBJECT_A), config.get(NEWSLETTER_BODY_A), "{{cleaner}} is cleaning this week - an email has been sent to all members.\nCurrent state has been stored in Dropbox")
     private val notCleaningContext = Context(config.get(NEWSLETTER_SUBJECT_B), config.get(NEWSLETTER_BODY_B), "There is no cleaning this week - an email reminder has been sent to {{cleaner}} who is cleaning next week.\nCurrent state has been stored in Dropbox")
+
+    private fun shouldRun(now: ZonedDateTime): Result<NoNeedToRun, ZonedDateTime> {
+        val daysToRun = config.getAsListOfInt(NEWSLETTER_GMAILER_RUN_ON_DAYS)
+        val timeToRunAfter = LocalTime.parse(config.get(NEWSLETTER_GMAILER_RUN_AFTER_TIME), DateTimeFormatter.ofPattern("HH:mm"))
+        val dayOfMonth = now.dayOfMonth
+        val time = now.toLocalTime()
+        return when {
+            daysToRun.contains(dayOfMonth).not() -> Failure(NoNeedToRunOnThisDay(dayOfMonth, daysToRun))
+            time < timeToRunAfter                -> Failure(NoNeedToRunAtThisTime(time, timeToRunAfter))
+            else                                 -> Success(now)
+        }
+    }
 
     private fun sendEmail(context: Context, nextCleaner: Member): String {
         val from = InternetAddress(
