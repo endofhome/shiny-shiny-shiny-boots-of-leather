@@ -228,6 +228,39 @@ class NewsletterGmailerTest {
         assertThat(gmailClient.sentMail, equalTo(emptyList<Message>()))
         assertThat(jobResult, equalTo("Error sending email with subject 'subject A' to Milford, Carla Azar"))
     }
+
+    @Test
+    fun `Email is only sent on a particular day of the month`() {
+        val appState =
+          """
+          |{
+          |  "status": "CLEANING_THIS_WEEK",
+          |  "cleaner": {
+          |    "name": "Milford",
+          |    "email": "milford@graves.com"
+          |  },
+          |  "nextUp": {
+          |    "name": "Carla",
+          |    "surname": "Azar",
+          |    "email": "carla@azar.com"
+          |  },
+          |  "lastRanOn": "2018-07-20",
+          |  "emailContents": "some announcement contents"
+          |}
+          |""".trimMargin()
+        val stateFile = FileLike(appStatefilename, appState)
+        val dropboxClient = StubDropboxClient(listOf(stateFile, membersFile))
+        val gmailClient = StubGmailClient(emptyList())
+        val firstOfJune = ZonedDateTime.of(2018, 6, 1, 0, 0, 0, 0, ZoneOffset.UTC)
+        val localConfig = config.copy(
+                config = configValues.toMutableMap()
+                        .apply { set(NEWSLETTER_GMAILER_RUN_ON_DAYS, "2, 11,12, 31 ") }
+                        .toMap()
+        )
+        val jobResult = NewsletterGmailer(gmailClient, DropboxDatastore(dropboxClient, appStateMetadata), DropboxDatastore(dropboxClient, membersMetadata), localConfig).run(firstOfJune)
+
+        assertThat(jobResult, equalTo("No need to run - day of month is 1, only running on day 2, 11, 12, 31 of each month"))
+    }
 }
 
 class StubDropboxClientThatCannotRead(initialFiles: List<FileLike> = emptyList()) : StubDropboxClient(initialFiles) {

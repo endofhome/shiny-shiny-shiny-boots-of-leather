@@ -109,14 +109,21 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
         }
     }
 
-    override fun run(now: ZonedDateTime): String =
-        StateRetriever(appStateDatastore, membersDatastore).state().map { state: ExternalState ->
+    override fun run(now: ZonedDateTime): String {
+        val daysToRun = config.getAsListOfInt(NEWSLETTER_GMAILER_RUN_ON_DAYS)
+        val today = now.dayOfMonth
+        if (daysToRun.contains(today).not()) {
+            return "No need to run - day of month is $today, only running on day ${daysToRun.joinToString(", ")} of each month"
+        }
+
+        return StateRetriever(appStateDatastore, membersDatastore).state().map { state: ExternalState ->
             val (appState, members) = state
             when (appState.status) {
                 CLEANING_THIS_WEEK     -> sendEmail(cleaningContext.withRecipients(members.allInternetAddresses()), appState.cleaner!!)
                 NOT_CLEANING_THIS_WEEK -> sendEmail(notCleaningContext.withRecipients(listOf(appState.nextUp.internetAddress())), appState.nextUp)
             }
         }.orElse { error -> error.message }
+    }
 
     private val cleaningContext = Context(config.get(NEWSLETTER_SUBJECT_A), config.get(NEWSLETTER_BODY_A), "{{cleaner}} is cleaning this week - an email has been sent to all members.\nCurrent state has been stored in Dropbox")
     private val notCleaningContext = Context(config.get(NEWSLETTER_SUBJECT_B), config.get(NEWSLETTER_BODY_B), "There is no cleaning this week - an email reminder has been sent to {{cleaner}} who is cleaning next week.\nCurrent state has been stored in Dropbox")
