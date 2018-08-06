@@ -109,22 +109,6 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
         }
     }
 
-    class StateRetriever(private val appStateDatastore: DropboxDatastore<NewsletterGmailerState>, private val membersDatastore: DropboxDatastore<Members>) {
-        fun state(): Result<ErrorDownloadingFileFromDropbox, ExternalState> {
-            val currentApplicationState = appStateDatastore.currentApplicationState()
-            val currentMembers = membersDatastore.currentApplicationState()
-
-            return when {
-                currentApplicationState is Failure -> Failure(currentApplicationState.reason)
-                currentMembers is Failure          -> Failure(currentMembers.reason)
-                else                               -> Success(ExternalState(
-                                                        (currentApplicationState as Success).value,
-                                                        (currentMembers as Success).value
-                                                      ))
-            }
-        }
-    }
-
     override fun run(now: ZonedDateTime): String =
         StateRetriever(appStateDatastore, membersDatastore).state().map { state: ExternalState ->
             val (appState, members) = state
@@ -134,11 +118,8 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
             }
         }.orElse { error -> error.message }
 
-    data class Context(val emailSubject: String, val emailBody: String, val successTemplate: String, val recipients: List<InternetAddress> = emptyList()) {
-        fun withRecipients(recipients: List<InternetAddress>) = this.copy(recipients = recipients)
-    }
-    private val cleaningContext = Context(config.get(NEWSLETTER_SUBJECT_A), config.get(NEWSLETTER_BODY_A), "{{this}} is cleaning this week - an email has been sent to all members.\nCurrent state has been stored in Dropbox")
-    private val notCleaningContext = Context(config.get(NEWSLETTER_SUBJECT_B), config.get(NEWSLETTER_BODY_B), "There is no cleaning this week - an email reminder has been sent to {{this}} who is cleaning next week.\nCurrent state has been stored in Dropbox")
+    private val cleaningContext = Context(config.get(NEWSLETTER_SUBJECT_A), config.get(NEWSLETTER_BODY_A), "{{cleaner}} is cleaning this week - an email has been sent to all members.\nCurrent state has been stored in Dropbox")
+    private val notCleaningContext = Context(config.get(NEWSLETTER_SUBJECT_B), config.get(NEWSLETTER_BODY_B), "There is no cleaning this week - an email reminder has been sent to {{cleaner}} who is cleaning next week.\nCurrent state has been stored in Dropbox")
 
     private fun sendEmail(context: Context, nextCleaner: Member): String {
         val from = InternetAddress(
@@ -152,8 +133,12 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
         val body = context.emailBody
         val email = Email(from, to, bcc, subject, body)
         return gmailClient.send(email.toGmailMessage())
-                          .map { Handlebars().compileInline(context.successTemplate).apply(nextCleaner.fullname()) }
-                          .orElse { "" }
+                          .map { Handlebars().compileInline(context.successTemplate).apply(mapOf("cleaner" to  nextCleaner.fullname())) }
+                          .orElse { Handlebars().compileInline("Error sending email with subject '{{subject}}' to {{recipients}}")
+                                                .apply(mapOf(
+                                                        "subject" to context.emailSubject,
+                                                        "recipients" to to.map { it.personal }.joinToString(", ")
+                                                ))}
     }
 
     private fun String.toInternetAddresses(delimiter: Char = ','): Result<NotAListOfEmailAddresses, List<InternetAddress>> =
@@ -173,6 +158,26 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
 
     data class Members(val members: List<Member>): ApplicationState {
         fun allInternetAddresses(): List<InternetAddress> = members.map { it.internetAddress() }
+    }
+
+    data class Context(val emailSubject: String, val emailBody: String, val successTemplate: String, val recipients: List<InternetAddress> = emptyList()) {
+        fun withRecipients(recipients: List<InternetAddress>) = this.copy(recipients = recipients)
+    }
+
+    class StateRetriever(private val appStateDatastore: DropboxDatastore<NewsletterGmailerState>, private val membersDatastore: DropboxDatastore<Members>) {
+        fun state(): Result<ErrorDownloadingFileFromDropbox, ExternalState> {
+            val currentApplicationState = appStateDatastore.currentApplicationState()
+            val currentMembers = membersDatastore.currentApplicationState()
+
+            return when {
+                currentApplicationState is Failure -> Failure(currentApplicationState.reason)
+                currentMembers is Failure          -> Failure(currentMembers.reason)
+                else                               -> Success(ExternalState(
+                        (currentApplicationState as Success).value,
+                        (currentMembers as Success).value
+                ))
+            }
+        }
     }
 }
 

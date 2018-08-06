@@ -13,6 +13,7 @@ import gmail.assertEmailEqual
 import jobs.GmailForwarderTest.FileLike
 import jobs.GmailForwarderTest.StubDropboxClient
 import jobs.GmailForwarderTest.StubGmailClient
+import jobs.GmailForwarderTest.StubGmailClientThatCannotSend
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfig
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_BODY_A
@@ -195,6 +196,37 @@ class NewsletterGmailerTest {
 
         assertThat(gmailClient.sentMail, equalTo(emptyList<Message>()))
         assertThat(jobResult, equalTo("Error downloading file /members.json from Dropbox"))
+    }
+
+    @Test
+    fun `Error message when email cannot be sent`() {
+        val appState =
+                """
+          |{
+          |  "status": "CLEANING_THIS_WEEK",
+          |  "cleaner": {
+          |    "name": "Milford",
+          |    "email": "milford@graves.com"
+          |  },
+          |  "nextUp": {
+          |    "name": "Carla",
+          |    "surname": "Azar",
+          |    "email": "carla@azar.com"
+          |  },
+          |  "lastRanOn": "2018-07-20",
+          |  "emailContents": "some announcement contents"
+          |}
+          |""".trimMargin()
+        val stateFile = FileLike(appStatefilename, appState)
+        val dropboxClient = StubDropboxClient(listOf(stateFile, membersFile))
+        val gmailClient = StubGmailClientThatCannotSend(emptyList())
+
+        val successfulAppStateDatastore = DropboxDatastore(dropboxClient, appStateMetadata)
+        val failingMembersDatastore = DropboxDatastore(dropboxClient, membersMetadata)
+        val jobResult = NewsletterGmailer(gmailClient, successfulAppStateDatastore, failingMembersDatastore, config).run(time)
+
+        assertThat(gmailClient.sentMail, equalTo(emptyList<Message>()))
+        assertThat(jobResult, equalTo("Error sending email with subject 'subject A' to Milford, Carla Azar"))
     }
 }
 
