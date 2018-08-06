@@ -27,6 +27,7 @@ import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerCo
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_GMAIL_CLIENT_SECRET
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_GMAIL_REFRESH_TOKEN
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_JOB_NAME
+import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_RUN_AFTER_TIME
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_RUN_ON_DAYS
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_TO_ADDRESS
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_TO_FULLNAME
@@ -44,7 +45,9 @@ import result.map
 import result.orElse
 import java.nio.file.Paths
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
 import javax.mail.internet.AddressException
 import javax.mail.internet.InternetAddress
 
@@ -60,6 +63,7 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
             object NEWSLETTER_GMAILER_GMAIL_REFRESH_TOKEN : NewsletterGmailerConfigItem()
             object NEWSLETTER_GMAILER_DROPBOX_ACCESS_TOKEN : NewsletterGmailerConfigItem()
             object NEWSLETTER_GMAILER_RUN_ON_DAYS : NewsletterGmailerConfigItem()
+            object NEWSLETTER_GMAILER_RUN_AFTER_TIME : NewsletterGmailerConfigItem()
             object NEWSLETTER_GMAILER_FROM_ADDRESS : NewsletterGmailerConfigItem()
             object NEWSLETTER_GMAILER_FROM_FULLNAME : NewsletterGmailerConfigItem()
             object NEWSLETTER_GMAILER_TO_ADDRESS : NewsletterGmailerConfigItem()
@@ -79,6 +83,7 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
                     NEWSLETTER_GMAILER_GMAIL_REFRESH_TOKEN,
                     NEWSLETTER_GMAILER_DROPBOX_ACCESS_TOKEN,
                     NEWSLETTER_GMAILER_RUN_ON_DAYS,
+                    NEWSLETTER_GMAILER_RUN_AFTER_TIME,
                     NEWSLETTER_GMAILER_FROM_ADDRESS,
                     NEWSLETTER_GMAILER_FROM_FULLNAME,
                     NEWSLETTER_GMAILER_TO_ADDRESS,
@@ -111,9 +116,13 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
 
     override fun run(now: ZonedDateTime): String {
         val daysToRun = config.getAsListOfInt(NEWSLETTER_GMAILER_RUN_ON_DAYS)
+        val timeToRunAfter = LocalTime.parse(config.get(NEWSLETTER_GMAILER_RUN_AFTER_TIME), DateTimeFormatter.ofPattern("HH:mm"))
         val today = now.dayOfMonth
         if (daysToRun.contains(today).not()) {
             return "No need to run - day of month is $today, only running on day ${daysToRun.joinToString(", ")} of each month"
+        }
+        if (now.toLocalTime() < timeToRunAfter) {
+            return "No need to run - time is ${now.hour}:${now.minute}, only running after ${timeToRunAfter.hour}:${timeToRunAfter.minute}"
         }
 
         return StateRetriever(appStateDatastore, membersDatastore).state().map { state: ExternalState ->

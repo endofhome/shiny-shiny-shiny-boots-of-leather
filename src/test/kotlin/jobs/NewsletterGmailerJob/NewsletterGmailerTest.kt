@@ -21,6 +21,7 @@ import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerCo
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_BCC_ADDRESS
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_FROM_ADDRESS
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_FROM_FULLNAME
+import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_RUN_AFTER_TIME
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_RUN_ON_DAYS
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_SUBJECT_A
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_SUBJECT_B
@@ -33,10 +34,11 @@ import javax.mail.internet.InternetAddress
 
 class NewsletterGmailerTest {
 
-    private val time = ZonedDateTime.of(2018, 6, 1, 0, 0, 0, 0, ZoneOffset.UTC)
+    private val time = ZonedDateTime.of(2018, 6, 1, 10, 30, 0, 0, ZoneOffset.UTC)
     private val baseConfigValues = NewsletterGmailerConfig().values().associate { it to "unused" }.toMutableMap()
     private val configValues: Map<NewsletterGmailerConfigItem, String> = baseConfigValues.apply {
         set(NEWSLETTER_GMAILER_RUN_ON_DAYS, "1")
+        set(NEWSLETTER_GMAILER_RUN_AFTER_TIME, "10:30")
         set(NEWSLETTER_GMAILER_FROM_ADDRESS, "bob@example.com")
         set(NEWSLETTER_GMAILER_FROM_FULLNAME, "Bobby")
         set(NEWSLETTER_GMAILER_BCC_ADDRESS, "fred@example.com")
@@ -48,7 +50,7 @@ class NewsletterGmailerTest {
     @Suppress("UNCHECKED_CAST")
     private val config = Configuration(configValues as Map<RequiredConfigItem, String>, NewsletterGmailerConfig(), null)
     private val membersState =
-            """
+          """
           |{
           |  "members": [
           |    {
@@ -72,7 +74,7 @@ class NewsletterGmailerTest {
     @Test
     fun `Happy path when cleaning this week`() {
         val appState =
-                """
+          """
           |{
           |  "status": "CLEANING_THIS_WEEK",
           |  "cleaner": {
@@ -115,7 +117,7 @@ class NewsletterGmailerTest {
     @Test
     fun `Happy path when no cleaning shift scheduled this week`() {
         val state =
-                """
+          """
           |{
           |  "status": "NOT_CLEANING_THIS_WEEK",
           |  "nextUp": {
@@ -169,7 +171,7 @@ class NewsletterGmailerTest {
     @Test
     fun `Error message is provided when current members list cannot be retrieved`() {
         val appState =
-                """
+          """
           |{
           |  "status": "CLEANING_THIS_WEEK",
           |  "cleaner": {
@@ -201,7 +203,7 @@ class NewsletterGmailerTest {
     @Test
     fun `Error message when email cannot be sent`() {
         val appState =
-                """
+          """
           |{
           |  "status": "CLEANING_THIS_WEEK",
           |  "cleaner": {
@@ -260,6 +262,39 @@ class NewsletterGmailerTest {
         val jobResult = NewsletterGmailer(gmailClient, DropboxDatastore(dropboxClient, appStateMetadata), DropboxDatastore(dropboxClient, membersMetadata), localConfig).run(firstOfJune)
 
         assertThat(jobResult, equalTo("No need to run - day of month is 1, only running on day 2, 11, 12, 31 of each month"))
+    }
+
+    @Test
+    fun `Email is only sent after a certain time of day`() {
+        val appState =
+          """
+          |{
+          |  "status": "CLEANING_THIS_WEEK",
+          |  "cleaner": {
+          |    "name": "Milford",
+          |    "email": "milford@graves.com"
+          |  },
+          |  "nextUp": {
+          |    "name": "Carla",
+          |    "surname": "Azar",
+          |    "email": "carla@azar.com"
+          |  },
+          |  "lastRanOn": "2018-07-20",
+          |  "emailContents": "some announcement contents"
+          |}
+          |""".trimMargin()
+        val stateFile = FileLike(appStatefilename, appState)
+        val dropboxClient = StubDropboxClient(listOf(stateFile, membersFile))
+        val gmailClient = StubGmailClient(emptyList())
+        val beforeTenThirty = ZonedDateTime.of(2018, 6, 1, 4, 14, 59, 0, ZoneOffset.UTC)
+        val localConfig = config.copy(
+                config = configValues.toMutableMap()
+                        .apply { set(NEWSLETTER_GMAILER_RUN_AFTER_TIME, "04:15") }
+                        .toMap()
+        )
+        val jobResult = NewsletterGmailer(gmailClient, DropboxDatastore(dropboxClient, appStateMetadata), DropboxDatastore(dropboxClient, membersMetadata), localConfig).run(beforeTenThirty)
+
+        assertThat(jobResult, equalTo("No need to run - time is 4:14, only running after 4:15"))
     }
 }
 
