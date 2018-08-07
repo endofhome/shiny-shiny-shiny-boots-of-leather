@@ -25,7 +25,7 @@ import result.Result.Success
 import java.time.ZoneOffset.UTC
 import java.time.ZonedDateTime
 
-class GmailForwarderAcceptanceTest {
+class GmailForwarderTest {
 
     private val time = ZonedDateTime.of(2018, 6, 1, 0, 0, 0, 0, UTC)
     private val baseConfigValues = GmailForwarderConfig().values().associate { it to "unused" }.toMutableMap()

@@ -78,3 +78,12 @@ data class Email(val from: InternetAddress, val to: List<InternetAddress>, val b
         return Message().run { setRaw(base64String) }
     }
 }
+
+fun ByteArray.asString() = String(this)
+fun Message.decodeRawAsStringWithoutMessageId(): String? {
+    return Base64(true).decode(raw)
+        .asString()
+        .split("\n")
+        .filterNot { it.startsWith("Message-ID:") }
+        .joinToString()
+}

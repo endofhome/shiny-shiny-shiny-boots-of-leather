@@ -40,14 +40,5 @@ class EmailTest {
 }
 
 fun assertEmailEqual(actual: Message, expected: Message) {
-    fun ByteArray.asString() = String(this)
-    fun Message.decodeRawAsStringWithoutMessageId(): String? {
-        return com.google.api.client.repackaged.org.apache.commons.codec.binary.Base64(true).decode(raw)
-                .asString()
-                .split("\n")
-                .filterNot { it.startsWith("Message-ID:") }
-                .joinToString()
-    }
-
     assertThat(actual.decodeRawAsStringWithoutMessageId(), equalTo(expected.decodeRawAsStringWithoutMessageId()))
 }

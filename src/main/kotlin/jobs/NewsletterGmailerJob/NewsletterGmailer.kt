@@ -1,6 +1,7 @@
 package jobs.NewsletterGmailerJob
 
 import com.github.jknack.handlebars.Handlebars
+import com.google.api.services.gmail.model.Message
 import config.Configuration
 import config.Configurator
 import config.RequiredConfig
@@ -123,8 +124,8 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
                       .map { state: ExternalState ->
                           val (appState, members) = state
                           when (appState.status) {
-                              CLEANING_THIS_WEEK     -> sendEmail(cleaningContext.withRecipients(members.allInternetAddresses()), appState.cleaner!!)
-                              NOT_CLEANING_THIS_WEEK -> sendEmail(notCleaningContext.withRecipients(listOf(appState.nextUp.internetAddress())), appState.nextUp)
+                              CLEANING_THIS_WEEK     -> gmailMessageFor(cleaningContext.withRecipients(members.allInternetAddresses())).sendWith(appState.cleaner!!)
+                              NOT_CLEANING_THIS_WEEK -> gmailMessageFor(notCleaningContext.withRecipients(listOf(appState.nextUp.internetAddress()))).sendWith(appState.nextUp)
                           }
                       }.orElse { error -> error.message }
 
@@ -143,7 +144,7 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
         }
     }
 
-    private fun sendEmail(context: Context, nextCleaner: Member): String {
+    private fun gmailMessageFor(context: Context): Pair<Message, Context> {
         val from = InternetAddress(
                 config.get(NEWSLETTER_GMAILER_FROM_ADDRESS),
                 config.get(NEWSLETTER_GMAILER_FROM_FULLNAME)
@@ -154,13 +155,20 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
         val subject = context.emailSubject
         val body = context.emailBody
         val email = Email(from, to, bcc, subject, body)
-        return gmailClient.send(email.toGmailMessage())
-                          .map { Handlebars().compileInline(context.successTemplate).apply(mapOf("cleaner" to  nextCleaner.fullname())) }
-                          .orElse { Handlebars().compileInline("Error sending email with subject '{{subject}}' to {{recipients}}")
-                                                .apply(mapOf(
-                                                        "subject" to context.emailSubject,
-                                                        "recipients" to to.map { it.personal }.joinToString(", ")
-                                                ))}
+        return email.toGmailMessage() to context
+    }
+
+    private fun Pair<Message, Context>.sendWith(nextCleaner: Member): String {
+        val (message, context) = this
+
+        return gmailClient.send(message)
+            .map { Handlebars().compileInline(context.successTemplate).apply(mapOf("cleaner" to  nextCleaner.fullname())) }
+            .orElse { Handlebars().compileInline("Error sending email with subject '{{subject}}' to {{recipients}}")
+                .apply(mapOf(
+                    "subject" to context.emailSubject,
+                    "recipients" to context.recipients.joinToString(", ") { it.personal }
+                ))
+            }
     }
 
     private fun String.toInternetAddresses(delimiter: Char = ','): Result<NotAListOfEmailAddresses, List<InternetAddress>> =
