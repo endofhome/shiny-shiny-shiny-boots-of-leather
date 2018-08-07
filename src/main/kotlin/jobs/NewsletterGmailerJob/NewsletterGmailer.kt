@@ -15,7 +15,9 @@ import gmail.AuthorisedGmailProvider
 import gmail.Email
 import gmail.GmailSecrets
 import gmail.HttpGmailClient
+import gmail.MessageString
 import gmail.SimpleGmailClient
+import gmail.decodeRawAsStringWithoutMessageId
 import jobs.Job
 import jobs.JobCompanion
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_BODY_A
@@ -124,8 +126,8 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
                       .map { state: ExternalState ->
                           val (appState, members) = state
                           when (appState.status) {
-                              CLEANING_THIS_WEEK     -> gmailMessageFor(cleaningContext.withRecipients(members.allInternetAddresses())).sendWith(appState.cleaner!!)
-                              NOT_CLEANING_THIS_WEEK -> gmailMessageFor(notCleaningContext.withRecipients(listOf(appState.nextUp.internetAddress()))).sendWith(appState.nextUp)
+                              CLEANING_THIS_WEEK     -> gmailMessageFor(cleaningContext.withRecipients(members.allInternetAddresses())).sendWith(appState.emailContents, appState.cleaner!!)
+                              NOT_CLEANING_THIS_WEEK -> gmailMessageFor(notCleaningContext.withRecipients(listOf(appState.nextUp.internetAddress()))).sendWith(appState.emailContents, appState.nextUp)
                           }
                       }.orElse { error -> error.message }
 
@@ -158,8 +160,11 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
         return email.toGmailMessage() to context
     }
 
-    private fun Pair<Message, Context>.sendWith(nextCleaner: Member): String {
+    private fun Pair<Message, Context>.sendWith(previousEmailContents: String, nextCleaner: Member): String {
         val (message, context) = this
+        if (thisMessageWasAlreadySent(message, previousEmailContents)) {
+            return "Exiting as this exact email has already been sent"
+        }
 
         return gmailClient.send(message)
             .map { Handlebars().compileInline(context.successTemplate).apply(mapOf("cleaner" to  nextCleaner.fullname())) }
@@ -170,6 +175,9 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
                 ))
             }
     }
+
+    private fun thisMessageWasAlreadySent(message: Message, previousEmailContents: String) =
+        message.decodeRawAsStringWithoutMessageId() == MessageString(previousEmailContents).withoutMessageIdAsString()
 
     private fun String.toInternetAddresses(delimiter: Char = ','): Result<NotAListOfEmailAddresses, List<InternetAddress>> =
         try {

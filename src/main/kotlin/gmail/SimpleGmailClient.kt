@@ -79,11 +79,15 @@ data class Email(val from: InternetAddress, val to: List<InternetAddress>, val b
     }
 }
 
-fun ByteArray.asString() = String(this)
-fun Message.decodeRawAsStringWithoutMessageId(): String? {
-    return Base64(true).decode(raw)
-        .asString()
-        .split("\n")
-        .filterNot { it.startsWith("Message-ID:") }
-        .joinToString()
+fun Message.decodeRawAsStringWithoutMessageId(): String? = decodeRawAsMessageString().withoutMessageIdAsString()
+
+fun Message.decodeRawAsMessageString() = Base64(true).decode(raw).asMessageString()
+
+fun ByteArray.asMessageString() = MessageString(String(this))
+
+data class MessageString(val value: String) {
+    fun withoutMessageIdAsString() = this.value.split("\n")
+                                               .filterNot { it.startsWith("Message-ID:") }
+                                               .map { it.trim() }
+                                               .joinToString()
 }

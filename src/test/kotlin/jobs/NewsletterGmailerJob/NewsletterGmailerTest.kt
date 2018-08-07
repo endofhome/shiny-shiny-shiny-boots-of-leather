@@ -296,6 +296,41 @@ class NewsletterGmailerTest {
 
         assertThat(jobResult, equalTo("No need to run - time is 4:14, only running after 4:15"))
     }
+
+    @Test
+    fun `Email isn't sent if the exact same email contents have already been sent`() {
+        val appState =
+          """
+          |{
+          |  "status": "CLEANING_THIS_WEEK",
+          |  "cleaner": {
+          |    "name": "Milford",
+          |    "email": "milford@graves.com"
+          |  },
+          |  "nextUp": {
+          |    "name": "Carla",
+          |    "surname": "Azar",
+          |    "email": "carla@azar.com"
+          |  },
+          |  "lastRanOn": "2018-07-20",
+          |  "emailContents": "From: Bobby <bob@example.com>
+          |                    To: Milford <milford@graves.com>, Carla Azar <carla@azar.com>
+          |                    Bcc: fred@example.com
+          |                    Subject: subject A
+          |                    MIME-Version: 1.0
+          |                    Content-Type: text/plain; charset=us-ascii
+          |                    Content-Transfer-Encoding: 7bit
+          |
+          |                    body A"
+          |}
+          |""".trimMargin().trimIndent()
+        val stateFile = FileLike(appStatefilename, appState)
+        val dropboxClient = StubDropboxClient(listOf(stateFile, membersFile))
+
+        val jobResult = NewsletterGmailer(StubGmailClient(emptyList()), DropboxDatastore(dropboxClient, appStateMetadata), DropboxDatastore(dropboxClient, membersMetadata), config).run(time)
+
+        assertThat(jobResult, equalTo("Exiting as this exact email has already been sent"))
+    }
 }
 
 class StubDropboxClientThatCannotRead(initialFiles: List<FileLike> = emptyList()) : StubDropboxClient(initialFiles) {
