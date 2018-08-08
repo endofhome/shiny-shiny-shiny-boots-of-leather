@@ -131,6 +131,7 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
                               NOT_CLEANING_THIS_WEEK -> notCleaningContext(listOf(appState.nextUp.internetAddress()), appState.emailContents, appState.nextUp)
                           }
                       }
+                      .flatMap { context -> context.validateNotADuplicate() }
                       .flatMap { context -> context.sendAsGmailMessage() }
                       .orElse { error -> error.message }
 
@@ -167,25 +168,26 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
             cleaner
         ))
 
-    private fun Context.sendAsGmailMessage(): Result<CouldNotSendEmailWith, String> {
-        val message = this.toGmailMessage()
-
-        if (thisMessageWasAlreadySent(message, previousEmailContents)) {
-            return Failure(CouldNotSendEmailWith("Exiting as this exact email has already been sent"))
+    private fun Context.validateNotADuplicate(): Result<CouldNotSendEmailWith, Context> =
+        if (thisMessageWasAlreadySent(this.toGmailMessage(), previousEmailContents)) {
+            Failure(CouldNotSendEmailWith("Exiting as this exact email has already been sent"))
+        } else {
+            Success(this)
         }
 
-        return gmailClient.send(message)
-                .map { val successMessage = Handlebars().compileInline(successTemplate).apply(mapOf("cleaner" to cleanerOnNotice.fullname()))
-                    Success(successMessage)
-                }.orElse {
-                    val errorMessage: String = Handlebars().compileInline("Error sending email with subject '{{subject}}' to {{recipients}}")
-                            .apply(mapOf(
-                                    "subject" to emailSubject,
-                                    "recipients" to recipients.joinToString(", ") { it.personal }
-                            ))
-                    Failure(CouldNotSendEmailWith(errorMessage))
-                }
-    }
+    private fun Context.sendAsGmailMessage(): Result<CouldNotSendEmailWith, String> =
+        gmailClient.send(this.toGmailMessage())
+            .map {
+                val successMessage = Handlebars().compileInline(successTemplate).apply(mapOf("cleaner" to cleanerOnNotice.fullname()))
+                Success(successMessage)
+            }.orElse {
+                val errorMessage: String = Handlebars().compileInline("Error sending email with subject '{{subject}}' to {{recipients}}")
+                        .apply(mapOf(
+                                "subject" to emailSubject,
+                                "recipients" to recipients.joinToString(", ") { it.personal }
+                        ))
+                Failure(CouldNotSendEmailWith(errorMessage))
+            }
 
     private fun Context.toGmailMessage() : Message {
         val from = InternetAddress(
