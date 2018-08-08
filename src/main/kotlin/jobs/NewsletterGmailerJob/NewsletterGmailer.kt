@@ -41,7 +41,6 @@ import jobs.NewsletterGmailerJob.NewsletterGmailer.NewsletterGmailerStatus
 import jobs.NewsletterGmailerJob.NewsletterGmailer.NewsletterGmailerStatus.CLEANING_THIS_WEEK
 import jobs.NewsletterGmailerJob.NewsletterGmailer.NewsletterGmailerStatus.NOT_CLEANING_THIS_WEEK
 import result.CouldNotSendEmailWith
-import result.Err
 import result.NoNeedToRun
 import result.NoNeedToRunAtThisTime
 import result.NoNeedToRunOnThisDay
@@ -128,11 +127,11 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
                       .flatMap { state: ExternalState ->
                           val (appState, members) = state
                           when (appState.status) {
-                              CLEANING_THIS_WEEK     -> gmailMessageFor(cleaningContext(members.allInternetAddresses(), appState.emailContents, appState.cleaner!!))
-                              NOT_CLEANING_THIS_WEEK -> gmailMessageFor(notCleaningContext(listOf(appState.nextUp.internetAddress()), appState.emailContents, appState.nextUp))
+                              CLEANING_THIS_WEEK     -> cleaningContext(members.allInternetAddresses(), appState.emailContents, appState.cleaner!!)
+                              NOT_CLEANING_THIS_WEEK -> notCleaningContext(listOf(appState.nextUp.internetAddress()), appState.emailContents, appState.nextUp)
                           }
                       }
-                      .flatMap { messageWithContext -> messageWithContext.send() }
+                      .flatMap { context -> context.sendAsGmailMessage() }
                       .orElse { error -> error.message }
 
 
@@ -149,56 +148,57 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
     }
 
     private fun cleaningContext(recipients: List<InternetAddress>, emailContents: String, cleaner: Member) =
-        Context(
+        Success(Context(
             config.get(NEWSLETTER_SUBJECT_A),
             config.get(NEWSLETTER_BODY_A),
             "{{cleaner}} is cleaning this week - an email has been sent to all members.\nCurrent state has been stored in Dropbox",
             recipients,
             emailContents,
             cleaner
-        )
+        ))
 
     private fun notCleaningContext(recipients: List<InternetAddress>, emailContents: String, cleaner: Member) =
-        Context(
+        Success(Context(
             config.get(NEWSLETTER_SUBJECT_B),
             config.get(NEWSLETTER_BODY_B),
             "There is no cleaning this week - an email reminder has been sent to {{cleaner}} who is cleaning next week.\nCurrent state has been stored in Dropbox",
             recipients,
             emailContents,
             cleaner
-        )
+        ))
 
-    private fun gmailMessageFor(context: Context): Result<Err, Pair<Message, Context>> {
-        val from = InternetAddress(
-                config.get(NEWSLETTER_GMAILER_FROM_ADDRESS),
-                config.get(NEWSLETTER_GMAILER_FROM_FULLNAME)
-        )
-        val to = context.recipients
-        val bccResult = config.get(NEWSLETTER_GMAILER_BCC_ADDRESS).toInternetAddresses()
-        val bcc = (bccResult as Success).value
-        val subject = context.emailSubject
-        val body = context.emailBody
-        val email = Email(from, to, bcc, subject, body)
-        return Success(email.toGmailMessage() to context)
-    }
+    private fun Context.sendAsGmailMessage(): Result<CouldNotSendEmailWith, String> {
+        val message = this.toGmailMessage()
 
-    private fun Pair<Message, Context>.send(): Result<CouldNotSendEmailWith, String> {
-        val (message, context) = this
-        if (thisMessageWasAlreadySent(message, context.previousEmailContents)) {
+        if (thisMessageWasAlreadySent(message, previousEmailContents)) {
             return Failure(CouldNotSendEmailWith("Exiting as this exact email has already been sent"))
         }
 
         return gmailClient.send(message)
-            .map { val successMessage = Handlebars().compileInline(context.successTemplate).apply(mapOf("cleaner" to context.cleanerOnNotice.fullname()))
-                Success(successMessage)
-            }.orElse {
-                val errorMessage: String = Handlebars().compileInline("Error sending email with subject '{{subject}}' to {{recipients}}")
-                .apply(mapOf(
-                    "subject" to context.emailSubject,
-                    "recipients" to context.recipients.joinToString(", ") { it.personal }
-                ))
-                Failure(CouldNotSendEmailWith(errorMessage))
-            }
+                .map { val successMessage = Handlebars().compileInline(successTemplate).apply(mapOf("cleaner" to cleanerOnNotice.fullname()))
+                    Success(successMessage)
+                }.orElse {
+                    val errorMessage: String = Handlebars().compileInline("Error sending email with subject '{{subject}}' to {{recipients}}")
+                            .apply(mapOf(
+                                    "subject" to emailSubject,
+                                    "recipients" to recipients.joinToString(", ") { it.personal }
+                            ))
+                    Failure(CouldNotSendEmailWith(errorMessage))
+                }
+    }
+
+    private fun Context.toGmailMessage() : Message {
+        val from = InternetAddress(
+                config.get(NEWSLETTER_GMAILER_FROM_ADDRESS),
+                config.get(NEWSLETTER_GMAILER_FROM_FULLNAME)
+        )
+        val to = recipients
+        val bccResult = config.get(NEWSLETTER_GMAILER_BCC_ADDRESS).toInternetAddresses()
+        val bcc = (bccResult as Success).value
+        val subject = emailSubject
+        val body = emailBody
+        val email = Email(from, to, bcc, subject, body)
+        return email.toGmailMessage()
     }
 
     private fun thisMessageWasAlreadySent(message: Message, previousEmailContents: String) =
