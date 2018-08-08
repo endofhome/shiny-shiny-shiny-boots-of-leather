@@ -40,6 +40,10 @@ class ErrorDecoding(messageSuffix: String? = null) : Err {
     override val message = "Error - could not decode raw message${messageSuffix?.let { ", $it" }}"
 }
 
+class CouldNotSendEmailWith(message: String): Err {
+    override val message = message
+}
+
 class CouldNotSendEmail : Err {
     override val message = "Error - could not send email/s"
 }
