@@ -48,6 +48,7 @@ import result.NotAListOfEmailAddresses
 import result.Result
 import result.Result.Failure
 import result.Result.Success
+import result.ThisEmailAlreadySent
 import result.flatMap
 import result.map
 import result.orElse
@@ -168,9 +169,9 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
             cleaner
         ))
 
-    private fun Context.validateNotADuplicate(): Result<CouldNotSendEmailWith, Context> =
+    private fun Context.validateNotADuplicate(): Result<ThisEmailAlreadySent, Context> =
         if (thisMessageWasAlreadySent(this.toGmailMessage(), previousEmailContents)) {
-            Failure(CouldNotSendEmailWith("Exiting as this exact email has already been sent"))
+            Failure(ThisEmailAlreadySent())
         } else {
             Success(this)
         }

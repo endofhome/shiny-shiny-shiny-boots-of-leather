@@ -70,7 +70,6 @@ class NewsletterGmailerTest {
     private val appStateMetadata = FlatFileApplicationStateMetadata(appStatefilename, NewsletterGmailerState::class.java)
     private val membersMetadata = FlatFileApplicationStateMetadata(membersFile.name, NewsletterGmailer.Members::class.java)
 
-
     @Test
     fun `Happy path when cleaning this week`() {
         val appState =
@@ -105,9 +104,25 @@ class NewsletterGmailerTest {
                 subject = config.get(NEWSLETTER_SUBJECT_A),
                 body = config.get(NEWSLETTER_BODY_A)
         ).toGmailMessage()
-        val jobResult = NewsletterGmailer(gmailClient, DropboxDatastore(dropboxClient, appStateMetadata), DropboxDatastore(dropboxClient, membersMetadata), config).run(time)
+        val expectedEndState =
+          """
+          |{
+          |  "status": "NOT_CLEANING_THIS_WEEK",
+          |  "nextUp": {
+          |    "name": "Carla",
+          |    "surname": "Azar",
+          |    "email": "carla@azar.com"
+          |  },
+          |  "lastRanOn": "2018-06-01",
+          |  "emailContents": "body A"
+          |}
+          |""".trimMargin()
+
+        val dropboxDatastore = DropboxDatastore(dropboxClient, appStateMetadata)
+        val jobResult = NewsletterGmailer(gmailClient, dropboxDatastore, DropboxDatastore(dropboxClient, membersMetadata), config).run(time)
 
         assertEmailEqual(gmailClient.sentMail.last(), expectedEmail)
+//        assertThat(dropboxDatastore.currentApplicationState().expectSuccess().asJsonString(), equalTo(expectedEndState.normaliseJsonString()))
         assertThat(jobResult, equalTo(
                 "Milford is cleaning this week - an email has been sent to all members.\n" +
                         "Current state has been stored in Dropbox")
@@ -332,6 +347,12 @@ class NewsletterGmailerTest {
         assertThat(jobResult, equalTo("Exiting as this exact email has already been sent"))
     }
 }
+
+private fun String.normaliseJsonString(): String =
+    this.replace("\n", "")
+        .replace(Regex("\\s+\""), "\"")
+        .replace(Regex("\\s+}"), "}")
+        .replace(Regex(":\\s+\\{"), "{")
 
 class StubDropboxClientThatCannotRead(initialFiles: List<FileLike> = emptyList()) : StubDropboxClient(initialFiles) {
     override fun readFile(filename: String): Result<ErrorDownloadingFileFromDropbox, String> =
