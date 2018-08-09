@@ -1,5 +1,6 @@
 package datastore
 
+import com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL
 import com.fasterxml.jackson.core.JsonParser.Feature.ALLOW_UNQUOTED_CONTROL_CHARS
 import com.fasterxml.jackson.core.JsonProcessingException
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -11,6 +12,8 @@ import result.Result.Failure
 import result.Result.Success
 import result.flatMap
 import result.fold
+import java.text.DateFormat.SHORT
+import java.text.DateFormat.getDateInstance
 
 interface Datastore<T : ApplicationState> {
     fun currentApplicationState(): Result<Err, T>
@@ -18,9 +21,6 @@ interface Datastore<T : ApplicationState> {
 }
 
 class DropboxDatastore<T : ApplicationState>(private val dropboxClient: SimpleDropboxClient, private val appStateMetadata: FlatFileApplicationStateMetadata<T>)  : Datastore<T> {
-    private val objectMapper = ObjectMapper().registerKotlinModule()
-                                             .registerModule(JavaTimeModule())
-                                             .configure(ALLOW_UNQUOTED_CONTROL_CHARS, true)
 
     override fun currentApplicationState(): Result<ErrorDownloadingFileFromDropbox, T> {
         val appStateFileContents = dropboxClient.readFile(appStateMetadata.filename)
@@ -45,7 +45,15 @@ class DropboxDatastore<T : ApplicationState>(private val dropboxClient: SimpleDr
                 else                       -> throw e
             }
         }
-}
 
-interface ApplicationState
+}
+interface ApplicationState {
+    fun asJsonString(): String = objectMapper.writeValueAsString(this)
+}
 data class FlatFileApplicationStateMetadata<T>(val filename: String, val stateClass: Class<T>)
+
+private val objectMapper: ObjectMapper = ObjectMapper().registerKotlinModule()
+        .setSerializationInclusion(NON_NULL)
+        .registerModule(JavaTimeModule())
+        .setDateFormat(getDateInstance(SHORT))
+        .configure(ALLOW_UNQUOTED_CONTROL_CHARS, true)

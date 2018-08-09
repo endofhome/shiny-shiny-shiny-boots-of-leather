@@ -37,6 +37,7 @@ class GmailForwarderTest {
     }.toMap()
     @Suppress("UNCHECKED_CAST")
     private val config = Configuration(configValues as Map<RequiredConfigItem, String>, GmailForwarderConfig(), null)
+    private val stateFilename = "/gmailer_state.json"
 
     @Test
     fun `Happy path`() {
@@ -47,9 +48,9 @@ class GmailForwarderTest {
           |  "emailContents": "Last month's email data"
           |}
           |""".trimMargin()
-        val stateFile = FileLike("/gmailer_state.json", state)
+        val stateFile = FileLike(stateFilename, state)
 
-        val dropboxClient = StubDropboxClient(listOf(stateFile))
+        val dropboxClient = StubDropboxClient(mapOf(stateFilename to stateFile))
         val emails = listOf(Message().setRaw("New email data"))
         val jobResult = GmailForwarder(StubGmailClient(emails), dropboxClient, config).run(time)
         assertThat(jobResult, equalTo(
@@ -67,9 +68,9 @@ class GmailForwarderTest {
           |  "emailContents": "Fairly new email data"
           |}
           |""".trimMargin()
-        val stateFile = FileLike("/gmailer_state.json", state)
+        val stateFile = FileLike(stateFilename, state)
 
-        val dropboxClient = StubDropboxClient(listOf(stateFile))
+        val dropboxClient = StubDropboxClient(mapOf(stateFilename to stateFile))
         val emails = listOf(Message().setRaw("New email data"))
         val jobResult = GmailForwarder(StubGmailClient(emails), dropboxClient, config).run(time)
         assertThat(jobResult, equalTo("Exiting, email has already been sent for June 2018"))
@@ -86,7 +87,7 @@ class GmailForwarderTest {
           |""".trimMargin()
         val stateFile = FileLike("/gmailer_state.json", state)
 
-        val dropboxClient = StubDropboxClient(listOf(stateFile))
+        val dropboxClient = StubDropboxClient(mapOf(stateFilename to stateFile))
         val emails = listOf(Message().setRaw("Last month's email data"))
         val jobResult = GmailForwarder(StubGmailClient(emails), dropboxClient, config).run(time)
         assertThat(jobResult, equalTo("Exiting due to invalid state, previous email appears to have been sent in the future"))
@@ -107,7 +108,7 @@ class GmailForwarderTest {
           |""".trimMargin()
         val stateFile = FileLike("/gmailer_state.json", state)
 
-        val dropboxClient = StubDropboxClient(listOf(stateFile))
+        val dropboxClient = StubDropboxClient(mapOf(stateFilename to stateFile))
         val emails = listOf(Message().setRaw(
           """
           |     From: Jim
@@ -130,7 +131,7 @@ class GmailForwarderTest {
           |""".trimMargin()
         val stateFile = FileLike("/gmailer_state.json", state)
 
-        val dropboxClient = StubDropboxClient(listOf(stateFile))
+        val dropboxClient = StubDropboxClient(mapOf(stateFilename to stateFile))
         val emails = listOf(Message().setRaw("New email data"))
         val firstOfJune = ZonedDateTime.of(2018, 6, 1, 0, 0, 0, 0, UTC)
         val localConfig = config.copy(
@@ -153,7 +154,7 @@ class GmailForwarderTest {
           |""".trimMargin()
         val stateFile = FileLike("/gmailer_state.json", state)
 
-        val dropboxClient = StubDropboxClient(listOf(stateFile))
+        val dropboxClient = StubDropboxClient(mapOf(stateFilename to stateFile))
         val emails = listOf(Message().setRaw("New email data"))
         val jobResult = GmailForwarder(StubGmailClientThatCannotSend(emails), dropboxClient, config).run(time)
         assertThat(jobResult, equalTo("Error - could not send email/s"))
@@ -170,7 +171,7 @@ class GmailForwarderTest {
           |""".trimMargin()
         val stateFile = FileLike("/gmailer_state.json", state)
 
-        val dropboxClient = StubDropboxClientThatCannotStore(listOf(stateFile))
+        val dropboxClient = StubDropboxClientThatCannotStore(mapOf(stateFilename to stateFile))
         val emails = listOf(Message().setRaw("New email data"))
         val jobResult = GmailForwarder(StubGmailClient(emails), dropboxClient, config).run(time)
         assertThat(jobResult, equalTo("New email has been sent\nError - could not store state in Dropbox"))
@@ -187,7 +188,7 @@ class GmailForwarderTest {
           |""".trimMargin()
         val stateFile = FileLike("/gmailer_state.json", state)
 
-        val dropboxClient = StubDropboxClient(listOf(stateFile))
+        val dropboxClient = StubDropboxClient(mapOf(stateFilename to stateFile))
         val emails = listOf(Message().setRaw("New email data"))
         val jobResult = GmailForwarder(StubGmailClientThatCannotRetrieveRawContent(emails), dropboxClient, config).run(time)
         assertThat(jobResult, equalTo("Error - could not get raw message content for email"))
@@ -204,7 +205,7 @@ class GmailForwarderTest {
           |""".trimMargin()
         val stateFile = FileLike("/gmailer_state.json", state)
 
-        val dropboxClient = StubDropboxClient(listOf(stateFile))
+        val dropboxClient = StubDropboxClient(mapOf(stateFilename to stateFile))
         val localConfig = config.copy(
                 config = configValues.toMutableMap()
                                      .apply { set(GMAIL_FORWARDER_GMAIL_QUERY, "some search query") }
@@ -216,7 +217,7 @@ class GmailForwarderTest {
 
     @Test
     fun `Error message is provided when state file does not exist in Dropbox`() {
-        val dropboxClient = StubDropboxClient(emptyList())
+        val dropboxClient = StubDropboxClient(mapOf())
         val emails = listOf(Message().setRaw("New email data"))
         val jobResult = GmailForwarder(StubGmailClient(emails), dropboxClient, config).run(time)
         assertThat(jobResult, equalTo("Error downloading file /gmailer_state.json from Dropbox"))
@@ -252,23 +253,23 @@ class StubGmailClientThatReturnsNoMatches(emails: List<Message>) : StubGmailClie
 }
 
 
-open class StubDropboxClient(initialFiles: List<FileLike>) : SimpleDropboxClient {
-    private var files = initialFiles
+open class StubDropboxClient(initialFiles: Map<String, FileLike>) : SimpleDropboxClient {
+    private var files: MutableMap<String, FileLike> = initialFiles.toMutableMap()
 
     override fun readFile(filename: String): Result<ErrorDownloadingFileFromDropbox, String> {
-        val fileMaybe = files.find { it.name == filename }
+        val fileMaybe = files[filename]
         return fileMaybe?.let { fileLike ->
             Success(fileLike.contents)
         } ?: Failure(ErrorDownloadingFileFromDropbox(filename))
     }
 
     override fun writeFile(fileContents: String, filename: String, fileDescription: String): Result<DropboxWriteFailure, String> {
-        files += FileLike(filename, fileContents)
+        files[filename] = FileLike(filename, fileContents)
         return Success("$fileDescription\nCurrent state has been stored in Dropbox")
     }
 }
 
-class StubDropboxClientThatCannotStore(initialFiles: List<FileLike>) : StubDropboxClient(initialFiles) {
+class StubDropboxClientThatCannotStore(initialFiles: Map<String, FileLike>) : StubDropboxClient(initialFiles) {
     override fun writeFile(fileContents: String, filename: String, fileDescription: String): Result<DropboxWriteFailure, String> =
             Failure(DropboxWriteFailure(fileDescription))
 }
