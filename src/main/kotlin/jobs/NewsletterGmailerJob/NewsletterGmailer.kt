@@ -41,6 +41,8 @@ import jobs.NewsletterGmailerJob.NewsletterGmailer.Members
 import jobs.NewsletterGmailerJob.NewsletterGmailer.NewsletterGmailerStatus
 import jobs.NewsletterGmailerJob.NewsletterGmailer.NewsletterGmailerStatus.CLEANING_THIS_WEEK
 import jobs.NewsletterGmailerJob.NewsletterGmailer.NewsletterGmailerStatus.NOT_CLEANING_THIS_WEEK
+import jobs.NewsletterGmailerJob.TemplatedMessage.CompiledTemplate
+import jobs.NewsletterGmailerJob.TemplatedMessage.RawTemplate
 import result.CouldNotSendEmail
 import result.NoNeedToRun
 import result.NoNeedToRunAtThisTime
@@ -62,7 +64,7 @@ import java.time.format.DateTimeFormatter
 import javax.mail.internet.AddressException
 import javax.mail.internet.InternetAddress
 
-class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val appStateDatastore: DropboxDatastore<NewsletterGmailerState>, val membersDatastore: DropboxDatastore<Members>, private val config: Configuration): Job {
+class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val appStateDatastore: DropboxDatastore<NewsletterGmailerState>, private val membersDatastore: DropboxDatastore<Members>, private val config: Configuration): Job {
     override val jobName: String = config.get(NEWSLETTER_GMAILER_JOB_NAME)
 
     companion object: JobCompanion {
@@ -163,7 +165,7 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
                 externalState.members.allInternetAddresses(),
                 config.get(NEWSLETTER_SUBJECT_A),
                 config.get(NEWSLETTER_BODY_A),
-                "{{cleaner}} is cleaning this week - an email has been sent to all members.",
+                RawTemplate("{{cleaner}} is cleaning this week - an email has been sent to all members."),
                 externalState.appState.cleaner!!
         ).asSuccess()
 
@@ -174,7 +176,7 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
                 listOf(externalState.appState.nextUp.internetAddress()),
                 config.get(NEWSLETTER_SUBJECT_B),
                 config.get(NEWSLETTER_BODY_B),
-                "There is no cleaning this week - an email reminder has been sent to {{cleaner}} who is cleaning next week.",
+                RawTemplate("There is no cleaning this week - an email reminder has been sent to {{cleaner}} who is cleaning next week."),
                 externalState.appState.nextUp
         ).asSuccess()
 
@@ -187,17 +189,14 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
 
     private fun Context.sendAsGmailMessage(): Result<CouldNotSendEmail, Context> =
         gmailClient.send(this.toGmailMessage(), this.emailSubject, this.recipients)
-                .map {
-                    val successMessage = Handlebars().compileInline(successMessage).apply(mapOf("cleaner" to cleanerOnNotice.fullname()))
-                    this.copy(successMessage = successMessage)
-                }
+                .map { this.copy(successMessage = CompiledTemplate.from(successMessage, mapOf("cleaner" to cleanerOnNotice.fullname()))) }
 
-    private fun updateAppStateInDb(message: Message, appState: NewsletterGmailerState, cleanerOnNotice: Member, successMessage: String, now: ZonedDateTime): Result<DropboxWriteFailure, String> {
+    private fun updateAppStateInDb(message: Message, appState: NewsletterGmailerState, cleanerOnNotice: Member, successMessage: TemplatedMessage, now: ZonedDateTime): Result<DropboxWriteFailure, String> {
         val nextStatus: NewsletterGmailerStatus = appState.status.flip()
         val cleaner = if (nextStatus == CLEANING_THIS_WEEK) appState.nextUp else null
         val newEmailContents = gmailClient.newMessageFrom(message.decodeRaw()).content.toString()
         val newState = NewsletterGmailerState(nextStatus, cleaner, cleanerOnNotice, now.toLocalDate(), newEmailContents)
-        return appStateDatastore.store(newState, successMessage)
+        return appStateDatastore.store(newState, successMessage.value)
     }
 
     private fun NewsletterGmailerStatus.flip() = when (this) {
@@ -254,7 +253,7 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
             val recipients: List<InternetAddress>,
             val emailSubject: String,
             val emailBody: String,
-            val successMessage: String,
+            val successMessage: TemplatedMessage,
             val cleanerOnNotice: Member
     )
 
@@ -291,3 +290,16 @@ data class Member(val name: String, val surname: String?, val email: String) {
 }
 
 data class ExternalState(val appState: NewsletterGmailerState, val members: Members)
+
+sealed class TemplatedMessage(val value: String) {
+    class RawTemplate(message: String): TemplatedMessage(message)
+    class CompiledTemplate private constructor(message: String): TemplatedMessage(message) {
+        companion object {
+            fun from(templatedMessage: TemplatedMessage, model: Map<String, String>): CompiledTemplate =
+                when (templatedMessage) {
+                    is RawTemplate      -> CompiledTemplate(Handlebars().compileInline(templatedMessage.value).apply(model))
+                    is CompiledTemplate -> templatedMessage
+                }
+        }
+    }
+}
