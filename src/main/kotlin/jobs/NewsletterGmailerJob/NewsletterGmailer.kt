@@ -127,11 +127,11 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
 
     override fun run(now: ZonedDateTime): String =
         shouldRun(now).flatMap { StateRetriever(appStateDatastore, membersDatastore).state() }
-                      .flatMap { state: ExternalState ->
-                          val (appState, members) = state
+                      .flatMap { externalState ->
+                          val (appState, members) = externalState
                           when (appState.status) {
-                              CLEANING_THIS_WEEK     -> cleaningContext(members.allInternetAddresses(), appState.emailContents, appState.cleaner!!)
-                              NOT_CLEANING_THIS_WEEK -> notCleaningContext(listOf(appState.nextUp.internetAddress()), appState.emailContents, appState.nextUp)
+                              CLEANING_THIS_WEEK     -> cleaningContext(externalState)
+                              NOT_CLEANING_THIS_WEEK -> notCleaningContext(externalState)
                           }
                       }
                       .flatMap { context -> context.validateNotADuplicate() }
@@ -151,25 +151,29 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
         }
     }
 
-    private fun cleaningContext(recipients: List<InternetAddress>, emailContents: String, cleaner: Member) =
-        Success(Context(
+    private fun cleaningContext(externalState: ExternalState) =
+        Context(
             config.get(NEWSLETTER_SUBJECT_A),
             config.get(NEWSLETTER_BODY_A),
             "{{cleaner}} is cleaning this week - an email has been sent to all members.\nCurrent state has been stored in Dropbox",
-            recipients,
-            emailContents,
-            cleaner
-        ))
+            externalState.members.allInternetAddresses(),
+            externalState.appState.emailContents,
+            externalState.appState.cleaner!!,
+            externalState.members,
+            externalState.appState
+        ).asSuccess()
 
-    private fun notCleaningContext(recipients: List<InternetAddress>, emailContents: String, cleaner: Member) =
-        Success(Context(
+    private fun notCleaningContext(externalState: ExternalState) =
+        Context(
             config.get(NEWSLETTER_SUBJECT_B),
             config.get(NEWSLETTER_BODY_B),
             "There is no cleaning this week - an email reminder has been sent to {{cleaner}} who is cleaning next week.\nCurrent state has been stored in Dropbox",
-            recipients,
-            emailContents,
-            cleaner
-        ))
+            listOf(externalState.appState.nextUp.internetAddress()),
+            externalState.appState.emailContents,
+            externalState.appState.nextUp,
+            externalState.members,
+            externalState.appState
+        ).asSuccess()
 
     private fun Context.validateNotADuplicate(): Result<ThisEmailAlreadySent, Context> =
         if (thisMessageWasAlreadySent(this.toGmailMessage(), previousEmailContents)) {
@@ -180,7 +184,7 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
 
     private fun Context.sendAsGmailMessage(now: ZonedDateTime): Result<CouldNotSendEmailWith, String> =
         gmailClient.send(this.toGmailMessage())
-            .flatMap { message -> updateAppStateInDb(message, this.cleanerOnNotice, now) }
+            .flatMap { message -> updateAppStateInDb(message, appState, members, cleanerOnNotice, now) }
             .map { Handlebars().compileInline(successTemplate).apply(mapOf("cleaner" to cleanerOnNotice.fullname())).asSuccess() }
             .orElse {
                 // TODO this error message should happen inside gmailClient.send()
@@ -192,10 +196,7 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
                 Failure(CouldNotSendEmailWith(errorMessage))
             }
 
-    private fun updateAppStateInDb(message: Message, cleanerOnNotice: Member, now: ZonedDateTime): Result<DropboxWriteFailure, String> {
-        val appState = (appStateDatastore.currentApplicationState() as Success).value // should be passed in to context constructor?
-        val members = (membersDatastore.currentApplicationState() as Success).value
-
+    private fun updateAppStateInDb(message: Message, appState: NewsletterGmailerState, members: Members, cleanerOnNotice: Member, now: ZonedDateTime): Result<DropboxWriteFailure, String> {
         val nextStatus: NewsletterGmailerStatus = appState.status.flip()
         val cleaner = if (nextStatus == CLEANING_THIS_WEEK) appState.nextUp else null
         val emailContents = gmailClient.newMessageFrom(message.decodeRaw()).content.toString()
@@ -251,7 +252,7 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
         }
     }
 
-    data class Context(val emailSubject: String, val emailBody: String, val successTemplate: String, val recipients: List<InternetAddress> = emptyList(), val previousEmailContents: String, val cleanerOnNotice: Member)
+    data class Context(val emailSubject: String, val emailBody: String, val successTemplate: String, val recipients: List<InternetAddress> = emptyList(), val previousEmailContents: String, val cleanerOnNotice: Member, val members: Members, val appState: NewsletterGmailerState)
 
     class StateRetriever(private val appStateDatastore: DropboxDatastore<NewsletterGmailerState>, private val membersDatastore: DropboxDatastore<Members>) {
         fun state(): Result<ErrorDownloadingFileFromDropbox, ExternalState> {
