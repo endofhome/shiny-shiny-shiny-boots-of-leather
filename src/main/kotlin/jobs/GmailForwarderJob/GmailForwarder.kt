@@ -152,7 +152,7 @@ class GmailForwarder(private val gmailClient: SimpleGmailClient, private val dro
             encode()
         }
 
-        return gmailClient.send(clonedMessageWithNewHeaders)
+        return gmailClient.send(clonedMessageWithNewHeaders, "Error - could not send email/s")
                           .flatMap { message -> message.decodeRawWithResult() }
                           .flatMap { emailContents ->
                               val newState = GmailForwarderState(ZonedDateTime.now(), emailContents)

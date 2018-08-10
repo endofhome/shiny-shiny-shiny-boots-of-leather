@@ -234,14 +234,14 @@ open class StubGmailClient(private val emails: List<Message>) : SimpleGmailClien
     override fun rawContentOf(cookedMessage: Message): ByteArray? =
             cookedMessage.raw.toByteArray()
 
-    override fun send(message: Message): Result<CouldNotSendEmail, Message> {
+    override fun send(message: Message, errorMessage: String): Result<CouldNotSendEmail, Message> {
         sentMail.add(message)
         return Success(message)
     }
 }
 
 class StubGmailClientThatCannotSend(emails: List<Message>) : StubGmailClient(emails) {
-    override fun send(message: Message): Result<CouldNotSendEmail, Message> = Failure(CouldNotSendEmail())
+    override fun send(message: Message, errorMessage: String): Result<CouldNotSendEmail, Message> = Failure(CouldNotSendEmail(errorMessage))
 }
 
 class StubGmailClientThatCannotRetrieveRawContent(emails: List<Message>) : StubGmailClient(emails) {

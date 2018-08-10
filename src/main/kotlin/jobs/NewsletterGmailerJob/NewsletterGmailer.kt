@@ -41,7 +41,7 @@ import jobs.NewsletterGmailerJob.NewsletterGmailer.Members
 import jobs.NewsletterGmailerJob.NewsletterGmailer.NewsletterGmailerStatus
 import jobs.NewsletterGmailerJob.NewsletterGmailer.NewsletterGmailerStatus.CLEANING_THIS_WEEK
 import jobs.NewsletterGmailerJob.NewsletterGmailer.NewsletterGmailerStatus.NOT_CLEANING_THIS_WEEK
-import result.CouldNotSendEmailWith
+import result.CouldNotSendEmail
 import result.NoNeedToRun
 import result.NoNeedToRunAtThisTime
 import result.NoNeedToRunOnThisDay
@@ -134,7 +134,13 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
                           }
                       }
                       .flatMap { context -> context.validateNotADuplicate() }
-                      .flatMap { context -> context.sendAsGmailMessage(now) }
+                      .flatMap { context -> context.sendAsGmailMessage() }
+                      .flatMap { context -> updateAppStateInDb(
+                                                context.toGmailMessage(),
+                                                context.appState,
+                                                context.members.nextMemberAfter(context.cleanerOnNotice),
+                                                context.successMessage,
+                                                now) }
                       .orElse { error -> error.message }
 
 
@@ -157,7 +163,7 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
                 externalState.members.allInternetAddresses(),
                 config.get(NEWSLETTER_SUBJECT_A),
                 config.get(NEWSLETTER_BODY_A),
-                "{{cleaner}} is cleaning this week - an email has been sent to all members.\nCurrent state has been stored in Dropbox",
+                "{{cleaner}} is cleaning this week - an email has been sent to all members.",
                 externalState.appState.cleaner!!
         ).asSuccess()
 
@@ -168,7 +174,7 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
                 listOf(externalState.appState.nextUp.internetAddress()),
                 config.get(NEWSLETTER_SUBJECT_B),
                 config.get(NEWSLETTER_BODY_B),
-                "There is no cleaning this week - an email reminder has been sent to {{cleaner}} who is cleaning next week.\nCurrent state has been stored in Dropbox",
+                "There is no cleaning this week - an email reminder has been sent to {{cleaner}} who is cleaning next week.",
                 externalState.appState.nextUp
         ).asSuccess()
 
@@ -179,26 +185,26 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
             Success(this)
         }
 
-    private fun Context.sendAsGmailMessage(now: ZonedDateTime): Result<CouldNotSendEmailWith, String> =
-        gmailClient.send(this.toGmailMessage())
-            .flatMap { message -> updateAppStateInDb(message, appState, members.nextMemberAfter(cleanerOnNotice), now) }
-            .map { Handlebars().compileInline(successTemplate).apply(mapOf("cleaner" to cleanerOnNotice.fullname())).asSuccess() }
-            .orElse {
-                // TODO this error message should happen inside gmailClient.send()
-                val errorMessage: String = Handlebars().compileInline("Error sending email with subject '{{subject}}' to {{recipients}}")
-                                                       .apply(mapOf(
-                                                               "subject" to emailSubject,
-                                                               "recipients" to recipients.joinToString(", ") { it.personal }
-                                                       ))
-                Failure(CouldNotSendEmailWith(errorMessage))
-            }
+    private fun Context.sendAsGmailMessage(): Result<CouldNotSendEmail, Context> {
+        val errorMessage = Handlebars().compileInline("Error sending email with subject '{{subject}}' to {{recipients}}")
+                                               .apply(mapOf(
+                                                       "subject" to emailSubject,
+                                                       "recipients" to recipients.joinToString(", ") { it.personal }
+                                               ))
 
-    private fun updateAppStateInDb(message: Message, appState: NewsletterGmailerState, cleanerOnNotice: Member, now: ZonedDateTime): Result<DropboxWriteFailure, String> {
+        return gmailClient.send(this.toGmailMessage(), errorMessage)
+                .map {
+                    val successMessage = Handlebars().compileInline(successMessage).apply(mapOf("cleaner" to cleanerOnNotice.fullname()))
+                    this.copy(successMessage = successMessage)
+                }
+    }
+
+    private fun updateAppStateInDb(message: Message, appState: NewsletterGmailerState, cleanerOnNotice: Member, successMessage: String, now: ZonedDateTime): Result<DropboxWriteFailure, String> {
         val nextStatus: NewsletterGmailerStatus = appState.status.flip()
         val cleaner = if (nextStatus == CLEANING_THIS_WEEK) appState.nextUp else null
         val newEmailContents = gmailClient.newMessageFrom(message.decodeRaw()).content.toString()
         val newState = NewsletterGmailerState(nextStatus, cleaner, cleanerOnNotice, now.toLocalDate(), newEmailContents)
-        return appStateDatastore.store(newState, "new NewsletterGmailer state")
+        return appStateDatastore.store(newState, successMessage)
     }
 
     private fun NewsletterGmailerStatus.flip() = when (this) {
@@ -255,7 +261,7 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
             val recipients: List<InternetAddress>,
             val emailSubject: String,
             val emailBody: String,
-            val successTemplate: String,
+            val successMessage: String,
             val cleanerOnNotice: Member
     )
 

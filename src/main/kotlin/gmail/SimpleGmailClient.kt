@@ -19,7 +19,7 @@ import javax.mail.internet.MimeMessage
 
 interface SimpleGmailClient {
     fun lastEmailForQuery(queryString: String): Message?
-    fun send(message: Message): Result<CouldNotSendEmail, Message>
+    fun send(message: Message, errorMessage: String): Result<CouldNotSendEmail, Message>
     fun rawContentOf(cookedMessage: Message): ByteArray?
     fun newMessageFrom(emailBytes: ByteArray?): MimeMessage =
             MimeMessage(
@@ -36,13 +36,13 @@ class HttpGmailClient(private val gmail: Gmail) : SimpleGmailClient {
         return listResponse?.messages?.firstOrNull()
     }
 
-    override fun send(message: Message): Result<CouldNotSendEmail, Message> {
+    override fun send(message: Message, errorMessage: String): Result<CouldNotSendEmail, Message> {
         return try {
             messages().send(user, message).execute()
             Success(message)
         } catch (e: Exception) {
             when (e) {
-                is IOException -> Failure(CouldNotSendEmail())
+                is IOException -> Failure(CouldNotSendEmail(errorMessage))
                 else           -> throw e
             }
         }
