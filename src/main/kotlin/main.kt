@@ -1,12 +1,10 @@
 import jobs.GmailForwarderJob.GmailForwarder
 import jobs.Job
-import jobs.NewsletterGmailerJob.NewsletterGmailer
 import java.time.ZonedDateTime
 
 fun main(args: Array<String>) {
     val gmailForwarder = GmailForwarder.initialise()
-    val newsletterGmailer = NewsletterGmailer.initialise()
-    val jobs: List<Job> = listOf(gmailForwarder, newsletterGmailer)
+    val jobs: List<Job> = listOf(gmailForwarder)
 
     jobs.forEach { job ->
         val result = job.run(ZonedDateTime.now())
