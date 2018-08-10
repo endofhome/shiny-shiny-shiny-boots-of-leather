@@ -184,7 +184,7 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
 
     private fun Context.sendAsGmailMessage(now: ZonedDateTime): Result<CouldNotSendEmailWith, String> =
         gmailClient.send(this.toGmailMessage())
-            .flatMap { message -> updateAppStateInDb(message, appState, members, cleanerOnNotice, now) }
+            .flatMap { message -> updateAppStateInDb(message, appState, members.nextMemberAfter(cleanerOnNotice), now) }
             .map { Handlebars().compileInline(successTemplate).apply(mapOf("cleaner" to cleanerOnNotice.fullname())).asSuccess() }
             .orElse {
                 // TODO this error message should happen inside gmailClient.send()
@@ -196,11 +196,11 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
                 Failure(CouldNotSendEmailWith(errorMessage))
             }
 
-    private fun updateAppStateInDb(message: Message, appState: NewsletterGmailerState, members: Members, cleanerOnNotice: Member, now: ZonedDateTime): Result<DropboxWriteFailure, String> {
+    private fun updateAppStateInDb(message: Message, appState: NewsletterGmailerState, cleanerOnNotice: Member, now: ZonedDateTime): Result<DropboxWriteFailure, String> {
         val nextStatus: NewsletterGmailerStatus = appState.status.flip()
         val cleaner = if (nextStatus == CLEANING_THIS_WEEK) appState.nextUp else null
-        val emailContents = gmailClient.newMessageFrom(message.decodeRaw()).content.toString()
-        val newState = NewsletterGmailerState(nextStatus, cleaner, members.nextMemberAfter(cleanerOnNotice), now.toLocalDate(), emailContents)
+        val newEmailContents = gmailClient.newMessageFrom(message.decodeRaw()).content.toString()
+        val newState = NewsletterGmailerState(nextStatus, cleaner, cleanerOnNotice, now.toLocalDate(), newEmailContents)
         return appStateDatastore.store(newState, "new NewsletterGmailer state")
     }
 
