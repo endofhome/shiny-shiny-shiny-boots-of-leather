@@ -1,9 +1,11 @@
 package result
 
+import com.github.jknack.handlebars.Handlebars
 import java.time.LocalTime
 import java.time.ZonedDateTime
 import java.time.format.TextStyle
 import java.util.Locale
+import javax.mail.internet.InternetAddress
 
 interface Err { val message: String }
 interface NoNeedToRun : Err
@@ -40,8 +42,12 @@ class ErrorDecoding(messageSuffix: String? = null) : Err {
     override val message = "Error - could not decode raw message${messageSuffix?.let { ", $it" }}"
 }
 
-class CouldNotSendEmail(errorMessage: String) : Err {
-    override val message = errorMessage
+class CouldNotSendEmail(emailSubject: String, recipients: List<InternetAddress>) : Err {
+    override val message: String = Handlebars().compileInline("Error sending email with subject '{{subject}}' to {{recipients}}")
+                                   .apply(mapOf(
+                                           "subject" to emailSubject,
+                                           "recipients" to recipients.joinToString(", ") { it.personal }
+                                   ))
 }
 
 class NotAListOfEmailAddresses(string: String) : Err {

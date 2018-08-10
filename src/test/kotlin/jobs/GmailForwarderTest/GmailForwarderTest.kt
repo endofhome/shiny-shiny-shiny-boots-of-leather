@@ -17,6 +17,7 @@ import jobs.GmailForwarderJob.GmailForwarder.Companion.GmailForwarderConfigItem.
 import jobs.GmailForwarderJob.GmailForwarder.Companion.GmailForwarderConfigItem.GMAIL_FORWARDER_GMAIL_QUERY
 import jobs.GmailForwarderJob.GmailForwarder.Companion.GmailForwarderConfigItem.GMAIL_FORWARDER_RUN_ON_DAYS
 import jobs.GmailForwarderJob.GmailForwarder.Companion.GmailForwarderConfigItem.GMAIL_FORWARDER_TO_ADDRESS
+import jobs.GmailForwarderJob.GmailForwarder.Companion.GmailForwarderConfigItem.GMAIL_FORWARDER_TO_FULLNAME
 import org.junit.Test
 import result.CouldNotSendEmail
 import result.Result
@@ -24,6 +25,7 @@ import result.Result.Failure
 import result.Result.Success
 import java.time.ZoneOffset.UTC
 import java.time.ZonedDateTime
+import javax.mail.internet.InternetAddress
 
 class GmailForwarderTest {
 
@@ -31,6 +33,7 @@ class GmailForwarderTest {
     private val baseConfigValues = GmailForwarderConfig().values().associate { it to "unused" }.toMutableMap()
     private val configValues: Map<GmailForwarderConfigItem, String> = baseConfigValues.apply {
         set(GMAIL_FORWARDER_RUN_ON_DAYS, "1")
+        set(GMAIL_FORWARDER_TO_FULLNAME, "Jim")
         set(GMAIL_FORWARDER_TO_ADDRESS, "jim@example.com")
         set(GMAIL_FORWARDER_FROM_ADDRESS, "bob@example.com")
         set(GMAIL_FORWARDER_BCC_ADDRESS, "fred@example.com")
@@ -157,7 +160,7 @@ class GmailForwarderTest {
         val dropboxClient = StubDropboxClient(mapOf(stateFilename to stateFile))
         val emails = listOf(Message().setRaw("New email data"))
         val jobResult = GmailForwarder(StubGmailClientThatCannotSend(emails), dropboxClient, config).run(time)
-        assertThat(jobResult, equalTo("Error - could not send email/s"))
+        assertThat(jobResult, equalTo("Error sending email with subject 'New email data' to Jim"))
     }
 
     @Test
@@ -234,14 +237,14 @@ open class StubGmailClient(private val emails: List<Message>) : SimpleGmailClien
     override fun rawContentOf(cookedMessage: Message): ByteArray? =
             cookedMessage.raw.toByteArray()
 
-    override fun send(message: Message, errorMessage: String): Result<CouldNotSendEmail, Message> {
+    override fun send(message: Message, subject: String, recipients: List<InternetAddress>): Result<CouldNotSendEmail, Message> {
         sentMail.add(message)
         return Success(message)
     }
 }
 
 class StubGmailClientThatCannotSend(emails: List<Message>) : StubGmailClient(emails) {
-    override fun send(message: Message, errorMessage: String): Result<CouldNotSendEmail, Message> = Failure(CouldNotSendEmail(errorMessage))
+    override fun send(message: Message, subject: String, recipients: List<InternetAddress>): Result<CouldNotSendEmail, Message> = Failure(CouldNotSendEmail(subject, recipients))
 }
 
 class StubGmailClientThatCannotRetrieveRawContent(emails: List<Message>) : StubGmailClient(emails) {

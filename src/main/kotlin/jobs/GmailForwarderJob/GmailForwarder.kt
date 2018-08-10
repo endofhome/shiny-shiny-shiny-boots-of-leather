@@ -144,15 +144,16 @@ class GmailForwarder(private val gmailClient: SimpleGmailClient, private val dro
     }
 
     private fun tryToSendEmail(datastore: Datastore<GmailForwarderState>, rawMessageToSend: ByteArray): String {
-
+        val recipient = InternetAddress(config.get(GMAIL_FORWARDER_TO_ADDRESS), config.get(GMAIL_FORWARDER_TO_FULLNAME))
         val clonedMessageWithNewHeaders = gmailClient.newMessageFrom(rawMessageToSend).run {
             replaceSender(InternetAddress(config.get(GMAIL_FORWARDER_FROM_ADDRESS), config.get(GMAIL_FORWARDER_FROM_FULLNAME)))
-            replaceRecipient(InternetAddress(config.get(GMAIL_FORWARDER_TO_ADDRESS), config.get(GMAIL_FORWARDER_TO_FULLNAME)), RecipientType.TO)
+            replaceRecipient(recipient, RecipientType.TO)
             replaceRecipient(InternetAddress(config.get(GMAIL_FORWARDER_BCC_ADDRESS)), RecipientType.BCC)
             encode()
         }
 
-        return gmailClient.send(clonedMessageWithNewHeaders, "Error - could not send email/s")
+        val subject = String(clonedMessageWithNewHeaders.decodeRaw()).substringBefore("\r\n")
+        return gmailClient.send(clonedMessageWithNewHeaders, subject, listOf(recipient))
                           .flatMap { message -> message.decodeRawWithResult() }
                           .flatMap { emailContents ->
                               val newState = GmailForwarderState(ZonedDateTime.now(), emailContents)

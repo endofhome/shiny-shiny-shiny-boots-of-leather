@@ -185,19 +185,12 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
             Success(this)
         }
 
-    private fun Context.sendAsGmailMessage(): Result<CouldNotSendEmail, Context> {
-        val errorMessage = Handlebars().compileInline("Error sending email with subject '{{subject}}' to {{recipients}}")
-                                               .apply(mapOf(
-                                                       "subject" to emailSubject,
-                                                       "recipients" to recipients.joinToString(", ") { it.personal }
-                                               ))
-
-        return gmailClient.send(this.toGmailMessage(), errorMessage)
+    private fun Context.sendAsGmailMessage(): Result<CouldNotSendEmail, Context> =
+        gmailClient.send(this.toGmailMessage(), this.emailSubject, this.recipients)
                 .map {
                     val successMessage = Handlebars().compileInline(successMessage).apply(mapOf("cleaner" to cleanerOnNotice.fullname()))
                     this.copy(successMessage = successMessage)
                 }
-    }
 
     private fun updateAppStateInDb(message: Message, appState: NewsletterGmailerState, cleanerOnNotice: Member, successMessage: String, now: ZonedDateTime): Result<DropboxWriteFailure, String> {
         val nextStatus: NewsletterGmailerStatus = appState.status.flip()
