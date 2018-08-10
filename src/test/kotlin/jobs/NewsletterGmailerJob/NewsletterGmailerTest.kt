@@ -159,11 +159,31 @@ class NewsletterGmailerTest {
                 body = config.get(NEWSLETTER_BODY_B)
         ).toGmailMessage()
 
+        val expectedEndState =
+          """
+          |{
+          |  "status": "CLEANING_THIS_WEEK",
+          |  "cleaner": {
+          |    "name": "Carla",
+          |    "surname": "Azar",
+          |    "email": "carla@azar.com"
+          |  },
+          |  "nextUp": {
+          |    "name": "Milford",
+          |    "email": "milford@graves.com"
+          |  },
+          |  "lastRanOn": "2018-06-01",
+          |  "emailContents": "body B"
+          |}
+          |""".trimMargin()
+
         val dropboxClient = StubDropboxClient(mapOf(appStatefilename to stateFile, membersFilename to membersFile))
         val gmailClient = StubGmailClient(emptyList())
-        val jobResult = NewsletterGmailer(gmailClient, DropboxDatastore(dropboxClient, appStateMetadata), DropboxDatastore(dropboxClient, membersMetadata), config).run(time)
+        val appStateDatastore = DropboxDatastore(dropboxClient, appStateMetadata)
+        val jobResult = NewsletterGmailer(gmailClient, appStateDatastore, DropboxDatastore(dropboxClient, membersMetadata), config).run(time)
 
         assertEmailEqual(gmailClient.sentMail.last(), expectedEmail)
+        assertThat(appStateDatastore.currentApplicationState().expectSuccess().asJsonString(), equalTo(expectedEndState.normaliseJsonString()))
         assertThat(jobResult, equalTo(
                 "There is no cleaning this week - an email reminder has been sent to Carla Azar who is cleaning next week.\n" +
                         "Current state has been stored in Dropbox")

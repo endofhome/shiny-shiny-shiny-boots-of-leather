@@ -185,7 +185,7 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
                 val nextStatus: NewsletterGmailerStatus = appState.status.flip()
                 val cleaner = if (nextStatus == CLEANING_THIS_WEEK) appState.nextUp else null
                 val emailContents = gmailClient.newMessageFrom(message.decodeRaw()).content.toString()
-                val newState = NewsletterGmailerState(nextStatus, cleaner, members.nextMemberAfter(appState.nextUp), now.toLocalDate(), emailContents)
+                val newState = NewsletterGmailerState(nextStatus, cleaner, members.nextMemberAfter(cleanerOnNotice), now.toLocalDate(), emailContents)
                 appStateDatastore.store(newState, "new NewsletterGmailer state")
             }
             .map {
@@ -241,7 +241,13 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
 
     data class Members(val members: List<Member>): ApplicationState {
         fun allInternetAddresses(): List<InternetAddress> = members.map { it.internetAddress() }
-        fun nextMemberAfter(member: Member) = members.listIterator(members.indexOf(member)).next()
+        fun nextMemberAfter(member: Member): Member {
+            val membersIterator = members.listIterator(members.indexOf(member) + 1)
+            return when {
+                membersIterator.hasNext() -> membersIterator.next()
+                else                      -> members.first()
+            }
+        }
     }
 
     data class Context(val emailSubject: String, val emailBody: String, val successTemplate: String, val recipients: List<InternetAddress> = emptyList(), val previousEmailContents: String, val cleanerOnNotice: Member)
