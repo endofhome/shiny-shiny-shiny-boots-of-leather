@@ -27,3 +27,5 @@ fun <F, S> Result<F, S>.orElse(f: (F) -> S): S =
             is Success<S> -> this.value
             is Failure<F> -> f(this.reason)
         }
+
+fun <T> T.asSuccess() = Success(this)

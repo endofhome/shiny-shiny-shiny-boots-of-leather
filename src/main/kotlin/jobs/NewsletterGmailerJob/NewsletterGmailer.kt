@@ -8,6 +8,7 @@ import config.RequiredConfig
 import config.RequiredConfigItem
 import datastore.ApplicationState
 import datastore.DropboxDatastore
+import datastore.DropboxWriteFailure
 import datastore.ErrorDownloadingFileFromDropbox
 import datastore.FlatFileApplicationStateMetadata
 import datastore.HttpDropboxClient
@@ -49,6 +50,7 @@ import result.Result
 import result.Result.Failure
 import result.Result.Success
 import result.ThisEmailAlreadySent
+import result.asSuccess
 import result.flatMap
 import result.map
 import result.orElse
@@ -178,20 +180,8 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
 
     private fun Context.sendAsGmailMessage(now: ZonedDateTime): Result<CouldNotSendEmailWith, String> =
         gmailClient.send(this.toGmailMessage())
-            .flatMap { message ->
-                val appState = (appStateDatastore.currentApplicationState() as Success).value // should be passed in to context constructor?
-                val members = (membersDatastore.currentApplicationState() as Success).value
-
-                val nextStatus: NewsletterGmailerStatus = appState.status.flip()
-                val cleaner = if (nextStatus == CLEANING_THIS_WEEK) appState.nextUp else null
-                val emailContents = gmailClient.newMessageFrom(message.decodeRaw()).content.toString()
-                val newState = NewsletterGmailerState(nextStatus, cleaner, members.nextMemberAfter(cleanerOnNotice), now.toLocalDate(), emailContents)
-                appStateDatastore.store(newState, "new NewsletterGmailer state")
-            }
-            .map {
-                val successMessage = Handlebars().compileInline(successTemplate).apply(mapOf("cleaner" to cleanerOnNotice.fullname()))
-                Success(successMessage)
-            }
+            .flatMap { message -> updateAppStateInDb(message, this.cleanerOnNotice, now) }
+            .map { Handlebars().compileInline(successTemplate).apply(mapOf("cleaner" to cleanerOnNotice.fullname())).asSuccess() }
             .orElse {
                 // TODO this error message should happen inside gmailClient.send()
                 val errorMessage: String = Handlebars().compileInline("Error sending email with subject '{{subject}}' to {{recipients}}")
@@ -201,6 +191,17 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
                                                        ))
                 Failure(CouldNotSendEmailWith(errorMessage))
             }
+
+    private fun updateAppStateInDb(message: Message, cleanerOnNotice: Member, now: ZonedDateTime): Result<DropboxWriteFailure, String> {
+        val appState = (appStateDatastore.currentApplicationState() as Success).value // should be passed in to context constructor?
+        val members = (membersDatastore.currentApplicationState() as Success).value
+
+        val nextStatus: NewsletterGmailerStatus = appState.status.flip()
+        val cleaner = if (nextStatus == CLEANING_THIS_WEEK) appState.nextUp else null
+        val emailContents = gmailClient.newMessageFrom(message.decodeRaw()).content.toString()
+        val newState = NewsletterGmailerState(nextStatus, cleaner, members.nextMemberAfter(cleanerOnNotice), now.toLocalDate(), emailContents)
+        return appStateDatastore.store(newState, "new NewsletterGmailer state")
+    }
 
     private fun NewsletterGmailerStatus.flip() = when (this) {
         CLEANING_THIS_WEEK     -> NOT_CLEANING_THIS_WEEK
