@@ -1,6 +1,7 @@
 package result
 
 import com.github.jknack.handlebars.Handlebars
+import java.time.DayOfWeek
 import java.time.LocalTime
 import java.time.ZonedDateTime
 import java.time.format.TextStyle
@@ -10,8 +11,12 @@ import javax.mail.internet.InternetAddress
 interface Err { val message: String }
 interface NoNeedToRun : Err
 
-class NoNeedToRunOnThisDay(dayOfMonth: Int, daysOfMonthToRun: List<Int>) : Err, NoNeedToRun  {
+class NoNeedToRunOnThisDayOfMonth(dayOfMonth: Int, daysOfMonthToRun: List<Int>) : Err, NoNeedToRun  {
     override val message = "No need to run - day of month is $dayOfMonth, only running on day ${daysOfMonthToRun.joinToString(", ")} of each month"
+}
+
+class NoNeedToRunOnThisDayOfWeek(dayOfWeek: DayOfWeek, daysOfWeekToRun: List<DayOfWeek>) : Err, NoNeedToRun  {
+    override val message = "No need to run - today is ${dayOfWeek.toString().toLowerCase().capitalize()}, only running on ${daysOfWeekToRun.joinToString(", ") { it.toString().toLowerCase().capitalize() }}"
 }
 
 class NoNeedToRunAtThisTime(now: LocalTime, timeToRunAfter: LocalTime) : Err, NoNeedToRun  {

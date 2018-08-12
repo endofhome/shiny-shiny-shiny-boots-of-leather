@@ -46,7 +46,7 @@ import jobs.NewsletterGmailerJob.TemplatedMessage.RawTemplate
 import result.CouldNotSendEmail
 import result.NoNeedToRun
 import result.NoNeedToRunAtThisTime
-import result.NoNeedToRunOnThisDay
+import result.NoNeedToRunOnThisDayOfWeek
 import result.NotAListOfEmailAddresses
 import result.Result
 import result.Result.Failure
@@ -147,12 +147,12 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
 
 
     private fun shouldRun(now: ZonedDateTime): Result<NoNeedToRun, ZonedDateTime> {
-        val daysToRun = config.getAsListOfInt(NEWSLETTER_GMAILER_RUN_ON_DAYS)
+        val daysToRun = config.getAsListOfDayOfWeek(NEWSLETTER_GMAILER_RUN_ON_DAYS)
         val timeToRunAfter = LocalTime.parse(config.get(NEWSLETTER_GMAILER_RUN_AFTER_TIME), DateTimeFormatter.ofPattern("HH:mm"))
-        val dayOfMonth = now.dayOfMonth
+        val dayOfWeek = now.dayOfWeek
         val time = now.toLocalTime()
         return when {
-            daysToRun.contains(dayOfMonth).not() -> Failure(NoNeedToRunOnThisDay(dayOfMonth, daysToRun))
+            daysToRun.contains(dayOfWeek).not() -> Failure(NoNeedToRunOnThisDayOfWeek(dayOfWeek, daysToRun))
             time < timeToRunAfter                -> Failure(NoNeedToRunAtThisTime(time, timeToRunAfter))
             else                                 -> Success(now)
         }

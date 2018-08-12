@@ -35,10 +35,10 @@ import javax.mail.internet.InternetAddress
 
 class NewsletterGmailerTest {
 
-    private val time = ZonedDateTime.of(2018, 6, 1, 10, 30, 0, 0, ZoneOffset.UTC)
+    private val time = ZonedDateTime.of(2018, 6, 4, 10, 30, 0, 0, ZoneOffset.UTC)
     private val baseConfigValues = NewsletterGmailerConfig().values().associate { it to "unused" }.toMutableMap()
     private val configValues: Map<NewsletterGmailerConfigItem, String> = baseConfigValues.apply {
-        set(NEWSLETTER_GMAILER_RUN_ON_DAYS, "1")
+        set(NEWSLETTER_GMAILER_RUN_ON_DAYS, "Monday")
         set(NEWSLETTER_GMAILER_RUN_AFTER_TIME, "10:30")
         set(NEWSLETTER_GMAILER_FROM_ADDRESS, "bob@example.com")
         set(NEWSLETTER_GMAILER_FROM_FULLNAME, "Bobby")
@@ -115,7 +115,7 @@ class NewsletterGmailerTest {
           |    "surname": "Azar",
           |    "email": "carla@azar.com"
           |  },
-          |  "lastRanOn": "2018-06-01",
+          |  "lastRanOn": "2018-06-04",
           |  "emailContents": "body A"
           |}
           |""".trimMargin()
@@ -172,7 +172,7 @@ class NewsletterGmailerTest {
           |    "name": "Milford",
           |    "email": "milford@graves.com"
           |  },
-          |  "lastRanOn": "2018-06-01",
+          |  "lastRanOn": "2018-06-04",
           |  "emailContents": "body B"
           |}
           |""".trimMargin()
@@ -269,7 +269,7 @@ class NewsletterGmailerTest {
     }
 
     @Test
-    fun `Email is only sent on a particular day of the month`() {
+    fun `Email is only sent on a particular day of the week`() {
         val appState =
           """
           |{
@@ -290,15 +290,15 @@ class NewsletterGmailerTest {
         val stateFile = FileLike(appStatefilename, appState)
         val dropboxClient = StubDropboxClient(mapOf(appStatefilename to stateFile, membersFilename to membersFile))
         val gmailClient = StubGmailClient(emptyList())
-        val firstOfJune = ZonedDateTime.of(2018, 6, 1, 0, 0, 0, 0, ZoneOffset.UTC)
+        val firstOfJune = ZonedDateTime.of(2018, 6, 3, 0, 0, 0, 0, ZoneOffset.UTC)
         val localConfig = config.copy(
                 config = configValues.toMutableMap()
-                        .apply { set(NEWSLETTER_GMAILER_RUN_ON_DAYS, "2, 11,12, 31 ") }
+                        .apply { set(NEWSLETTER_GMAILER_RUN_ON_DAYS, "Monday, Wednesday, Thursday") }
                         .toMap()
         )
         val jobResult = NewsletterGmailer(gmailClient, DropboxDatastore(dropboxClient, appStateMetadata), DropboxDatastore(dropboxClient, membersMetadata), localConfig).run(firstOfJune)
 
-        assertThat(jobResult, equalTo("No need to run - day of month is 1, only running on day 2, 11, 12, 31 of each month"))
+        assertThat(jobResult, equalTo("No need to run - today is Sunday, only running on Monday, Wednesday, Thursday"))
     }
 
     @Test
@@ -323,7 +323,7 @@ class NewsletterGmailerTest {
         val stateFile = FileLike(appStatefilename, appState)
         val dropboxClient = StubDropboxClient(mapOf(appStatefilename to stateFile, membersFilename to membersFile))
         val gmailClient = StubGmailClient(emptyList())
-        val beforeTenThirty = ZonedDateTime.of(2018, 6, 1, 4, 14, 59, 0, ZoneOffset.UTC)
+        val beforeTenThirty = ZonedDateTime.of(2018, 6, 4, 4, 14, 59, 0, ZoneOffset.UTC)
         val localConfig = config.copy(
                 config = configValues.toMutableMap()
                         .apply { set(NEWSLETTER_GMAILER_RUN_AFTER_TIME, "04:15") }

@@ -1,6 +1,7 @@
 package config
 
 import java.nio.file.Path
+import java.time.DayOfWeek
 
 data class Configuration(private val config: Map<RequiredConfigItem, String?>, private val requiredConfig: RequiredConfig, val configDir: Path?) {
 
@@ -17,7 +18,13 @@ data class Configuration(private val config: Map<RequiredConfigItem, String?>, p
     fun getAsListOfInt(item: RequiredConfigItem, delimiter: Char = ','): List<Int> = try {
         this.get(item).split(delimiter).map { it.trim().toInt() }
     } catch (e: Exception) {
-        throw ConfigurationException("It was not safe to return ${item.name} as a list of ${Int::class}")
+        throw ConfigurationException("It was not safe to return ${item.name} (value: ${this.get(item)}) as a list of ${Int::class}")
+    }
+
+    fun getAsListOfDayOfWeek(item: RequiredConfigItem, delimiter: Char = ','): List<DayOfWeek> = try {
+        this.get(item).split(delimiter).map { DayOfWeek.valueOf(it.trim().toUpperCase()) }
+    } catch (e: Exception) {
+        throw ConfigurationException("It was not safe to return ${item.name} (value: ${this.get(item)}) as a list of ${DayOfWeek::class}")
     }
 
     private fun validate(required: Set<RequiredConfigItem>, provided: Map<RequiredConfigItem, String?>) {

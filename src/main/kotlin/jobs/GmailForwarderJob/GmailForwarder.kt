@@ -38,7 +38,7 @@ import result.Err
 import result.ErrorDecoding
 import result.InvalidStateInFuture
 import result.NoMatchingResultsForQuery
-import result.NoNeedToRunOnThisDay
+import result.NoNeedToRunOnThisDayOfMonth
 import result.Result
 import result.Result.Failure
 import result.Result.Success
@@ -165,9 +165,9 @@ class GmailForwarder(private val gmailClient: SimpleGmailClient, private val dro
     private fun Message.decodeRawWithResult() : Result<ErrorDecoding, String> =
             this.decodeRaw()?.let { Success(String(it)) } ?: Failure(ErrorDecoding("message was sent but updated state was not stored in Dropbox."))
 
-    private fun List<Int>.includes(dayOfMonth: Int): Result<NoNeedToRunOnThisDay, Int> = when {
+    private fun List<Int>.includes(dayOfMonth: Int): Result<NoNeedToRunOnThisDayOfMonth, Int> = when {
         this.contains(dayOfMonth) -> Success(dayOfMonth)
-        else                      -> Failure(NoNeedToRunOnThisDay(dayOfMonth, this))
+        else                      -> Failure(NoNeedToRunOnThisDayOfMonth(dayOfMonth, this))
     }
 }
 
