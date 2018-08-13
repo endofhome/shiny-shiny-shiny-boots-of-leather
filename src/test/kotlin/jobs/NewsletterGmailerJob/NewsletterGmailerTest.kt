@@ -17,15 +17,15 @@ import jobs.GmailForwarderTest.StubGmailClient
 import jobs.GmailForwarderTest.StubGmailClientThatCannotSend
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfig
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem
-import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_BODY_A
-import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_BODY_B
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_BCC_ADDRESS
+import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_BODY_A
+import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_BODY_B
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_FROM_ADDRESS
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_FROM_FULLNAME
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_RUN_AFTER_TIME
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_RUN_ON_DAYS
-import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_SUBJECT_A
-import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_SUBJECT_B
+import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_SUBJECT_A
+import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_SUBJECT_B
 import org.junit.Test
 import result.Result
 import result.Result.Failure
@@ -43,10 +43,10 @@ class NewsletterGmailerTest {
         set(NEWSLETTER_GMAILER_FROM_ADDRESS, "bob@example.com")
         set(NEWSLETTER_GMAILER_FROM_FULLNAME, "Bobby")
         set(NEWSLETTER_GMAILER_BCC_ADDRESS, "fred@example.com")
-        set(NEWSLETTER_SUBJECT_A, "subject A")
-        set(NEWSLETTER_BODY_A, "body A")
-        set(NEWSLETTER_SUBJECT_B, "subject B")
-        set(NEWSLETTER_BODY_B, "body B")
+        set(NEWSLETTER_GMAILER_SUBJECT_A, "subject A")
+        set(NEWSLETTER_GMAILER_BODY_A, "body A")
+        set(NEWSLETTER_GMAILER_SUBJECT_B, "subject B")
+        set(NEWSLETTER_GMAILER_BODY_B, "body B")
     }.toMap()
     @Suppress("UNCHECKED_CAST")
     private val config = Configuration(configValues as Map<RequiredConfigItem, String>, NewsletterGmailerConfig(), null)
@@ -103,8 +103,8 @@ class NewsletterGmailerTest {
                        ),
                 to = listOf(InternetAddress("milford@graves.com", "Milford"), InternetAddress("carla@azar.com", "Carla Azar")),
                 bcc = listOf(InternetAddress(config.get(NEWSLETTER_GMAILER_BCC_ADDRESS))),
-                subject = config.get(NEWSLETTER_SUBJECT_A),
-                body = config.get(NEWSLETTER_BODY_A)
+                subject = config.get(NEWSLETTER_GMAILER_SUBJECT_A),
+                body = config.get(NEWSLETTER_GMAILER_BODY_A)
         ).toGmailMessage()
         val expectedEndState =
           """
@@ -155,8 +155,8 @@ class NewsletterGmailerTest {
                 ),
                 to = listOf(InternetAddress("carla@azar.com", "Carla Azar")),
                 bcc = listOf(InternetAddress(config.get(NEWSLETTER_GMAILER_BCC_ADDRESS))),
-                subject = config.get(NEWSLETTER_SUBJECT_B),
-                body = config.get(NEWSLETTER_BODY_B)
+                subject = config.get(NEWSLETTER_GMAILER_SUBJECT_B),
+                body = config.get(NEWSLETTER_GMAILER_BODY_B)
         ).toGmailMessage()
 
         val expectedEndState =

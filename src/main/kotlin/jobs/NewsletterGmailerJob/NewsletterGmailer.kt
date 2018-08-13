@@ -22,9 +22,9 @@ import gmail.SimpleGmailClient
 import gmail.decodeRawAsStringWithoutMessageId
 import jobs.Job
 import jobs.JobCompanion
-import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_BODY_A
-import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_BODY_B
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_BCC_ADDRESS
+import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_BODY_A
+import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_BODY_B
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_DROPBOX_ACCESS_TOKEN
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_FROM_ADDRESS
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_FROM_FULLNAME
@@ -34,8 +34,8 @@ import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerCo
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_JOB_NAME
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_RUN_AFTER_TIME
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_RUN_ON_DAYS
-import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_SUBJECT_A
-import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_SUBJECT_B
+import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_SUBJECT_A
+import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_SUBJECT_B
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Members
 import jobs.NewsletterGmailerJob.NewsletterGmailer.NewsletterGmailerStatus
 import jobs.NewsletterGmailerJob.NewsletterGmailer.NewsletterGmailerStatus.CLEANING_THIS_WEEK
@@ -80,10 +80,10 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
             object NEWSLETTER_GMAILER_FROM_ADDRESS : NewsletterGmailerConfigItem()
             object NEWSLETTER_GMAILER_FROM_FULLNAME : NewsletterGmailerConfigItem()
             object NEWSLETTER_GMAILER_BCC_ADDRESS : NewsletterGmailerConfigItem()
-            object NEWSLETTER_SUBJECT_A : NewsletterGmailerConfigItem()
-            object NEWSLETTER_SUBJECT_B : NewsletterGmailerConfigItem()
-            object NEWSLETTER_BODY_A : NewsletterGmailerConfigItem()
-            object NEWSLETTER_BODY_B : NewsletterGmailerConfigItem()
+            object NEWSLETTER_GMAILER_SUBJECT_A : NewsletterGmailerConfigItem()
+            object NEWSLETTER_GMAILER_SUBJECT_B : NewsletterGmailerConfigItem()
+            object NEWSLETTER_GMAILER_BODY_A : NewsletterGmailerConfigItem()
+            object NEWSLETTER_GMAILER_BODY_B : NewsletterGmailerConfigItem()
         }
 
         class NewsletterGmailerConfig: RequiredConfig {
@@ -98,10 +98,10 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
                     NEWSLETTER_GMAILER_FROM_ADDRESS,
                     NEWSLETTER_GMAILER_FROM_FULLNAME,
                     NEWSLETTER_GMAILER_BCC_ADDRESS,
-                    NEWSLETTER_SUBJECT_A,
-                    NEWSLETTER_SUBJECT_B,
-                    NEWSLETTER_BODY_A,
-                    NEWSLETTER_BODY_B
+                    NEWSLETTER_GMAILER_SUBJECT_A,
+                    NEWSLETTER_GMAILER_SUBJECT_B,
+                    NEWSLETTER_GMAILER_BODY_A,
+                    NEWSLETTER_GMAILER_BODY_B
             )
         }
 
@@ -159,8 +159,8 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
                 externalState.appState,
                 externalState.members,
                 externalState.members.allInternetAddresses(),
-                config.get(NEWSLETTER_SUBJECT_A),
-                config.get(NEWSLETTER_BODY_A),
+                config.get(NEWSLETTER_GMAILER_SUBJECT_A),
+                config.get(NEWSLETTER_GMAILER_BODY_A),
                 RawTemplate("{{cleaner}} is cleaning this week - an email has been sent to all members."),
                 externalState.appState.cleaner!!
         ).asSuccess()
@@ -170,8 +170,8 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
                 externalState.appState,
                 externalState.members,
                 listOf(externalState.appState.nextUp.internetAddress()),
-                config.get(NEWSLETTER_SUBJECT_B),
-                config.get(NEWSLETTER_BODY_B),
+                config.get(NEWSLETTER_GMAILER_SUBJECT_B),
+                config.get(NEWSLETTER_GMAILER_BODY_B),
                 RawTemplate("There is no cleaning this week - an email reminder has been sent to {{cleaner}} who is cleaning next week."),
                 externalState.appState.nextUp
         ).asSuccess()
