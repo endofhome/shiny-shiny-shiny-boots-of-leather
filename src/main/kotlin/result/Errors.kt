@@ -48,10 +48,10 @@ class ErrorDecoding(messageSuffix: String? = null) : Err {
 }
 
 class CouldNotSendEmail(emailSubject: String, recipients: List<InternetAddress>) : Err {
-    override val message: String = Handlebars().compileInline("Error sending email with subject '{{subject}}' to {{recipients}}")
+    override val message: String = Handlebars().compileInline("Error sending email with subject '{{subject}}' to {{{recipients}}}")
                                    .apply(mapOf(
                                            "subject" to emailSubject,
-                                           "recipients" to recipients.joinToString(", ") { it.personal }
+                                           "recipients" to recipients.joinToString(", ") { "${it.personal.trim()} <${it.address}>" }
                                    ))
 }
 
