@@ -55,7 +55,10 @@ class AuthorisedGmailProvider(port: Int, private val appName: String, private va
                 .build()
 
         val localServerReceiver = LocalServerReceiver.Builder().setPort(port).build()
-        return AuthorizationCodeInstalledApp(flow, localServerReceiver).authorize("user")
+        return AuthorizationCodeInstalledApp(flow, localServerReceiver).authorize("user").also {
+            println("Google Access Token: ${it.accessToken}")
+            println("Google Refresh Token: ${it.refreshToken}")
+        }
     }
 }
 
