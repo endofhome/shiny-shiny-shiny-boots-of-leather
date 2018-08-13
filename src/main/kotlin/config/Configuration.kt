@@ -15,16 +15,10 @@ data class Configuration(private val config: Map<RequiredConfigItem, String?>, p
         throw ConfigurationException("$item was not available during get")
     }
 
-    fun getAsListOfInt(item: RequiredConfigItem, delimiter: Char = ','): List<Int> = try {
-        this.get(item).split(delimiter).map { it.trim().toInt() }
+    inline fun <reified T> getAsListOf(item: RequiredConfigItem, transform: (String) -> T, delimiter: Char = ','): List<T> = try {
+        this.get(item).split(delimiter).map { it.trim() }.map { transform(it) }
     } catch (e: Exception) {
-        throw ConfigurationException("It was not safe to return ${item.name} (value: ${this.get(item)}) as a list of ${Int::class}")
-    }
-
-    fun getAsListOfDayOfWeek(item: RequiredConfigItem, delimiter: Char = ','): List<DayOfWeek> = try {
-        this.get(item).split(delimiter).map { DayOfWeek.valueOf(it.trim().toUpperCase()) }
-    } catch (e: Exception) {
-        throw ConfigurationException("It was not safe to return ${item.name} (value: ${this.get(item)}) as a list of ${DayOfWeek::class}")
+        throw ConfigurationException("It was not safe to return ${item.name} (value: ${this.get(item)}) as a list of ${T::class}")
     }
 
     private fun validate(required: Set<RequiredConfigItem>, provided: Map<RequiredConfigItem, String?>) {
@@ -48,3 +42,5 @@ data class Configuration(private val config: Map<RequiredConfigItem, String?>, p
 val osNewline: String = System.getProperty("line.separator")
 fun String.newlines(numberOf: Int) = this + (1..numberOf).map { osNewline }.joinToString("")
 class ConfigurationException(override val message: String) : RuntimeException()
+val stringToDayOfWeek = { s: String -> DayOfWeek.valueOf(s.toUpperCase()) }
+val stringToInt = { s: String -> s.toInt() }

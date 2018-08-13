@@ -6,6 +6,7 @@ import config.Configuration
 import config.Configurator
 import config.RequiredConfig
 import config.RequiredConfigItem
+import config.stringToDayOfWeek
 import datastore.ApplicationState
 import datastore.DropboxDatastore
 import datastore.DropboxWriteFailure
@@ -57,6 +58,7 @@ import result.flatMap
 import result.map
 import result.orElse
 import java.nio.file.Paths
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZonedDateTime
@@ -147,7 +149,7 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
 
 
     private fun shouldRun(now: ZonedDateTime): Result<NoNeedToRun, ZonedDateTime> {
-        val daysToRun = config.getAsListOfDayOfWeek(NEWSLETTER_GMAILER_RUN_ON_DAYS)
+        val daysToRun: List<DayOfWeek> = config.getAsListOf(NEWSLETTER_GMAILER_RUN_ON_DAYS, stringToDayOfWeek)
         val timeToRunAfter = LocalTime.parse(config.get(NEWSLETTER_GMAILER_RUN_AFTER_TIME), DateTimeFormatter.ofPattern("HH:mm"))
         val dayOfWeek = now.dayOfWeek
         val time = now.toLocalTime()

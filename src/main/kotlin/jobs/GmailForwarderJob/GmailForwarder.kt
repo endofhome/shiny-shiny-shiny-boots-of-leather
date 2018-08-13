@@ -5,6 +5,7 @@ import config.Configuration
 import config.Configurator
 import config.RequiredConfig
 import config.RequiredConfigItem
+import config.stringToInt
 import datastore.ApplicationState
 import datastore.Datastore
 import datastore.DropboxDatastore
@@ -107,7 +108,8 @@ class GmailForwarder(private val gmailClient: SimpleGmailClient, private val dro
     override fun run(now: ZonedDateTime): String {
         val appStateMetadata = FlatFileApplicationStateMetadata("/gmailer_state.json", GmailForwarderState::class.java)
         val datastore: Datastore<GmailForwarderState> = DropboxDatastore(dropboxClient, appStateMetadata)
-        val shouldRunNow = config.getAsListOfInt(GMAIL_FORWARDER_RUN_ON_DAYS).includes(now.dayOfMonth)
+        val runOnDays: List<Int> = config.getAsListOf(GMAIL_FORWARDER_RUN_ON_DAYS, stringToInt)
+        val shouldRunNow = runOnDays.includes(now.dayOfMonth)
 
         return shouldRunNow.flatMap { datastore.currentApplicationState() }
                            .flatMap { applicationState: GmailForwarderState -> shouldTryToSend(applicationState, now) }
