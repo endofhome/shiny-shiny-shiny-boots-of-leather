@@ -201,10 +201,8 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
         return appStateDatastore.store(newState, successMessage.value)
     }
 
-    private fun NewsletterGmailerStatus.flip() = when (this) {
-        CLEANING_THIS_WEEK     -> NOT_CLEANING_THIS_WEEK
-        NOT_CLEANING_THIS_WEEK -> CLEANING_THIS_WEEK
-    }
+    private fun thisMessageWasAlreadySent(message: Message, previousEmailContents: String) =
+            message.decodeRawAsStringWithoutMessageId() == MessageString(previousEmailContents).withoutMessageIdAsString()
 
     private fun Context.toGmailMessage() : Message {
         val from = InternetAddress(
@@ -220,8 +218,10 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
         return email.toGmailMessage()
     }
 
-    private fun thisMessageWasAlreadySent(message: Message, previousEmailContents: String) =
-        message.decodeRawAsStringWithoutMessageId() == MessageString(previousEmailContents).withoutMessageIdAsString()
+    private fun NewsletterGmailerStatus.flip() = when (this) {
+        CLEANING_THIS_WEEK     -> NOT_CLEANING_THIS_WEEK
+        NOT_CLEANING_THIS_WEEK -> CLEANING_THIS_WEEK
+    }
 
     private fun String.toInternetAddresses(delimiter: Char = ','): Result<NotAListOfEmailAddresses, List<InternetAddress>> =
         try {
