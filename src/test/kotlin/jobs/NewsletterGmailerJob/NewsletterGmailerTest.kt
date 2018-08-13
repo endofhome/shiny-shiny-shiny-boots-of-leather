@@ -265,7 +265,7 @@ class NewsletterGmailerTest {
         val jobResult = NewsletterGmailer(gmailClient, successfulAppStateDatastore, failingMembersDatastore, config).run(time)
 
         assertThat(gmailClient.sentMail, equalTo(emptyList<Message>()))
-        assertThat(jobResult, equalTo("Error sending email with subject 'subject A' to Milford, Carla Azar"))
+        assertThat(jobResult, equalTo("Error sending email with subject 'subject A' to Milford <milford@graves.com>, Carla Azar <carla@azar.com>"))
     }
 
     @Test
