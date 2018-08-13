@@ -130,7 +130,7 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
     }
 
     override fun run(now: ZonedDateTime): String =
-        shouldRun(now).flatMap { StateRetriever(appStateDatastore, membersDatastore).state() }
+        shouldRun(now).flatMap { ExternalStateRetriever(appStateDatastore, membersDatastore).retrieve() }
                       .flatMap { externalState ->
                           when (externalState.appState.status) {
                               CLEANING_THIS_WEEK     -> cleaningContext(externalState)
@@ -259,8 +259,8 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
             val cleanerOnNotice: Member
     )
 
-    class StateRetriever(private val appStateDatastore: DropboxDatastore<NewsletterGmailerState>, private val membersDatastore: DropboxDatastore<Members>) {
-        fun state(): Result<ErrorDownloadingFileFromDropbox, ExternalState> {
+    class ExternalStateRetriever(private val appStateDatastore: DropboxDatastore<NewsletterGmailerState>, private val membersDatastore: DropboxDatastore<Members>) {
+        fun retrieve(): Result<ErrorDownloadingFileFromDropbox, ExternalState> {
             val currentApplicationState = appStateDatastore.currentApplicationState()
             val currentMembers = membersDatastore.currentApplicationState()
 
