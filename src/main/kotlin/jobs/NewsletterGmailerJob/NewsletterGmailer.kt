@@ -34,8 +34,6 @@ import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerCo
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_JOB_NAME
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_RUN_AFTER_TIME
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_RUN_ON_DAYS
-import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_TO_ADDRESS
-import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_TO_FULLNAME
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_SUBJECT_A
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_SUBJECT_B
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Members
@@ -81,8 +79,6 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
             object NEWSLETTER_GMAILER_RUN_AFTER_TIME : NewsletterGmailerConfigItem()
             object NEWSLETTER_GMAILER_FROM_ADDRESS : NewsletterGmailerConfigItem()
             object NEWSLETTER_GMAILER_FROM_FULLNAME : NewsletterGmailerConfigItem()
-            object NEWSLETTER_GMAILER_TO_ADDRESS : NewsletterGmailerConfigItem()
-            object NEWSLETTER_GMAILER_TO_FULLNAME : NewsletterGmailerConfigItem()
             object NEWSLETTER_GMAILER_BCC_ADDRESS : NewsletterGmailerConfigItem()
             object NEWSLETTER_SUBJECT_A : NewsletterGmailerConfigItem()
             object NEWSLETTER_SUBJECT_B : NewsletterGmailerConfigItem()
@@ -101,8 +97,6 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
                     NEWSLETTER_GMAILER_RUN_AFTER_TIME,
                     NEWSLETTER_GMAILER_FROM_ADDRESS,
                     NEWSLETTER_GMAILER_FROM_FULLNAME,
-                    NEWSLETTER_GMAILER_TO_ADDRESS,
-                    NEWSLETTER_GMAILER_TO_FULLNAME,
                     NEWSLETTER_GMAILER_BCC_ADDRESS,
                     NEWSLETTER_SUBJECT_A,
                     NEWSLETTER_SUBJECT_B,
