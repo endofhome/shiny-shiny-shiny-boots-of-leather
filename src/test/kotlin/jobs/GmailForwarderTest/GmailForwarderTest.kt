@@ -160,7 +160,7 @@ class GmailForwarderTest {
         val dropboxClient = StubDropboxClient(mapOf(stateFilename to stateFile))
         val emails = listOf(Message().setRaw("New email data"))
         val jobResult = GmailForwarder(StubGmailClientThatCannotSend(emails), dropboxClient, config).run(time)
-        assertThat(jobResult, equalTo("Error sending email with subject 'New email data' to Jim"))
+        assertThat(jobResult, equalTo("Error sending email with subject 'New email data' to Jim <jim@example.com>"))
     }
 
     @Test
