@@ -163,27 +163,31 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
         }
     }
 
-    private fun cleaningContext(externalState: ExternalState) =
-        Context(
+    private fun cleaningContext(externalState: ExternalState): Success<Context> {
+        val cleanerOnNotice = externalState.appState.cleaner!!
+        return Context(
                 externalState.appState,
                 externalState.members,
                 externalState.members.allInternetAddresses(),
-                config.get(NEWSLETTER_GMAILER_SUBJECT_A),
+                CompiledTemplate.from(RawTemplate(config.get(NEWSLETTER_GMAILER_SUBJECT_A)), mapOf("cleaner" to cleanerOnNotice.fullname())),
                 config.get(NEWSLETTER_GMAILER_BODY_A),
                 RawTemplate("{{cleaner}} is cleaning this week - an email has been sent to all members."),
-                externalState.appState.cleaner!!
+                cleanerOnNotice
         ).asSuccess()
+    }
 
-    private fun notCleaningContext(externalState: ExternalState) =
-        Context(
+    private fun notCleaningContext(externalState: ExternalState): Success<Context> {
+        val cleanerOnNotice = externalState.appState.nextUp
+        return Context(
                 externalState.appState,
                 externalState.members,
                 listOf(externalState.appState.nextUp.internetAddress()),
-                config.get(NEWSLETTER_GMAILER_SUBJECT_B),
+                CompiledTemplate.from(RawTemplate(config.get(NEWSLETTER_GMAILER_SUBJECT_B)), mapOf("cleaner" to cleanerOnNotice.fullname())),
                 config.get(NEWSLETTER_GMAILER_BODY_B),
                 RawTemplate("There is no cleaning this week - an email reminder has been sent to {{cleaner}} who is cleaning next week."),
-                externalState.appState.nextUp
+                cleanerOnNotice
         ).asSuccess()
+    }
 
     private fun Context.validateNotADuplicate(): Result<ThisEmailAlreadySent, Context> =
         if (thisMessageWasAlreadySent(this.toGmailMessage(), appState.emailContents)) {
@@ -193,8 +197,8 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
         }
 
     private fun Context.sendAsGmailMessage(): Result<CouldNotSendEmail, Context> =
-        gmailClient.send(this.toGmailMessage(), this.emailSubject, this.recipients)
-                .map { this.copy(successMessage = CompiledTemplate.from(successMessage, mapOf("cleaner" to cleanerOnNotice.fullname()))) }
+        gmailClient.send(this.toGmailMessage(), this.emailSubject.value, this.recipients)
+                .map { this.copy(successMessage = CompiledTemplate.from(successMessage, mapOf("cleaner" to cleanerOnNotice.fullname())))}
 
     private fun updateAppStateInDb(message: Message, appState: NewsletterGmailerState, cleanerOnNotice: Member, successMessage: TemplatedMessage, now: ZonedDateTime): Result<DropboxWriteFailure, String> {
         val nextStatus: NewsletterGmailerStatus = appState.status.flip()
@@ -215,7 +219,7 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
         val to = recipients
         val bccResult = config.get(NEWSLETTER_GMAILER_BCC_ADDRESS).toInternetAddresses()
         val bcc = (bccResult as Success).value
-        val subject = emailSubject
+        val subject = emailSubject.value
         val body = emailBody
         val email = Email(from, to, bcc, subject, body)
         return email.toGmailMessage()
@@ -256,7 +260,7 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
             val appState: NewsletterGmailerState,
             val members: Members,
             val recipients: List<InternetAddress>,
-            val emailSubject: String,
+            val emailSubject: TemplatedMessage,
             val emailBody: String,
             val successMessage: TemplatedMessage,
             val cleanerOnNotice: Member

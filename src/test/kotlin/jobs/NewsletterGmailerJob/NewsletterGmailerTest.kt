@@ -26,6 +26,8 @@ import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerCo
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_RUN_ON_DAYS
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_SUBJECT_A
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_SUBJECT_B
+import jobs.NewsletterGmailerJob.TemplatedMessage.CompiledTemplate
+import jobs.NewsletterGmailerJob.TemplatedMessage.RawTemplate
 import org.junit.Test
 import result.Result
 import result.Result.Failure
@@ -43,9 +45,9 @@ class NewsletterGmailerTest {
         set(NEWSLETTER_GMAILER_FROM_ADDRESS, "bob@example.com")
         set(NEWSLETTER_GMAILER_FROM_FULLNAME, "Bobby")
         set(NEWSLETTER_GMAILER_BCC_ADDRESS, "fred@example.com")
-        set(NEWSLETTER_GMAILER_SUBJECT_A, "subject A")
+        set(NEWSLETTER_GMAILER_SUBJECT_A, "subject A with {{cleaner}}")
         set(NEWSLETTER_GMAILER_BODY_A, "body A")
-        set(NEWSLETTER_GMAILER_SUBJECT_B, "subject B")
+        set(NEWSLETTER_GMAILER_SUBJECT_B, "subject B with {{cleaner}}")
         set(NEWSLETTER_GMAILER_BODY_B, "body B")
     }.toMap()
     @Suppress("UNCHECKED_CAST")
@@ -74,12 +76,13 @@ class NewsletterGmailerTest {
 
     @Test
     fun `Happy path when cleaning this week`() {
+        val cleanerFirstName = "Milford"
         val appState =
           """
           |{
           |  "status": "CLEANING_THIS_WEEK",
           |  "cleaner": {
-          |    "name": "Milford",
+          |    "name": "$cleanerFirstName",
           |    "email": "milford@graves.com"
           |  },
           |  "nextUp": {
@@ -103,7 +106,7 @@ class NewsletterGmailerTest {
                        ),
                 to = listOf(InternetAddress("milford@graves.com", "Milford"), InternetAddress("carla@azar.com", "Carla Azar")),
                 bcc = listOf(InternetAddress(config.get(NEWSLETTER_GMAILER_BCC_ADDRESS))),
-                subject = config.get(NEWSLETTER_GMAILER_SUBJECT_A),
+                subject = CompiledTemplate.from(RawTemplate(config.get(NEWSLETTER_GMAILER_SUBJECT_A)), mapOf("cleaner" to cleanerFirstName)).value,
                 body = config.get(NEWSLETTER_GMAILER_BODY_A)
         ).toGmailMessage()
         val expectedEndState =
@@ -133,13 +136,16 @@ class NewsletterGmailerTest {
 
     @Test
     fun `Happy path when no cleaning shift scheduled this week`() {
+        val cleanerFirstName = "Carla"
+        val cleanerLastName = "Azar"
+        val cleaner = "$cleanerFirstName $cleanerLastName"
         val state =
           """
           |{
           |  "status": "NOT_CLEANING_THIS_WEEK",
           |  "nextUp": {
-          |    "name": "Carla",
-          |    "surname": "Azar",
+          |    "name": "$cleanerFirstName",
+          |    "surname": "$cleanerLastName",
           |    "email": "carla@azar.com"
           |  },
           |  "lastRanOn": "2018-07-27",
@@ -152,10 +158,10 @@ class NewsletterGmailerTest {
                 from = InternetAddress(
                         config.get(NEWSLETTER_GMAILER_FROM_ADDRESS),
                         config.get(NEWSLETTER_GMAILER_FROM_FULLNAME)
-                ),
-                to = listOf(InternetAddress("carla@azar.com", "Carla Azar")),
+                       ),
+                to = listOf(InternetAddress("carla@azar.com", cleaner)),
                 bcc = listOf(InternetAddress(config.get(NEWSLETTER_GMAILER_BCC_ADDRESS))),
-                subject = config.get(NEWSLETTER_GMAILER_SUBJECT_B),
+                subject = CompiledTemplate.from(RawTemplate(config.get(NEWSLETTER_GMAILER_SUBJECT_B)), mapOf("cleaner" to cleaner)).value,
                 body = config.get(NEWSLETTER_GMAILER_BODY_B)
         ).toGmailMessage()
 
@@ -239,12 +245,13 @@ class NewsletterGmailerTest {
 
     @Test
     fun `Error message when email cannot be sent`() {
+        val cleanerFirstName = "Milford"
         val appState =
           """
           |{
           |  "status": "CLEANING_THIS_WEEK",
           |  "cleaner": {
-          |    "name": "Milford",
+          |    "name": "$cleanerFirstName",
           |    "email": "milford@graves.com"
           |  },
           |  "nextUp": {
@@ -260,12 +267,12 @@ class NewsletterGmailerTest {
         val dropboxClient = StubDropboxClient(mapOf(appStatefilename to stateFile, membersFilename to membersFile))
         val gmailClient = StubGmailClientThatCannotSend(emptyList())
 
-        val successfulAppStateDatastore = DropboxDatastore(dropboxClient, appStateMetadata)
-        val failingMembersDatastore = DropboxDatastore(dropboxClient, membersMetadata)
-        val jobResult = NewsletterGmailer(gmailClient, successfulAppStateDatastore, failingMembersDatastore, config).run(time)
+        val appDatastore = DropboxDatastore(dropboxClient, appStateMetadata)
+        val membersDatastore = DropboxDatastore(dropboxClient, membersMetadata)
+        val jobResult = NewsletterGmailer(gmailClient, appDatastore, membersDatastore, config).run(time)
 
         assertThat(gmailClient.sentMail, equalTo(emptyList<Message>()))
-        assertThat(jobResult, equalTo("Error sending email with subject 'subject A' to Milford <milford@graves.com>, Carla Azar <carla@azar.com>"))
+        assertThat(jobResult, equalTo("Error sending email with subject 'subject A with Milford' to Milford <milford@graves.com>, Carla Azar <carla@azar.com>"))
     }
 
     @Test
@@ -353,7 +360,7 @@ class NewsletterGmailerTest {
           |  "emailContents": "From: Bobby <bob@example.com>
           |                    To: Milford <milford@graves.com>, Carla Azar <carla@azar.com>
           |                    Bcc: fred@example.com
-          |                    Subject: subject A
+          |                    Subject: subject A with Milford
           |                    MIME-Version: 1.0
           |                    Content-Type: text/html; charset=utf-8; format=flowed
           |                    Content-Transfer-Encoding: 7bit
