@@ -182,7 +182,7 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
                 externalState.appState,
                 externalState.members,
                 listOf(externalState.appState.nextUp.internetAddress()),
-                CompiledTemplate.from(RawTemplate(config.get(NEWSLETTER_GMAILER_SUBJECT_B)), mapOf("cleaner" to cleanerOnNotice.fullname())),
+                CompiledTemplate.from(RawTemplate(config.get(NEWSLETTER_GMAILER_SUBJECT_B)), mapOf("cleaner" to cleanerOnNotice.name)),
                 config.get(NEWSLETTER_GMAILER_BODY_B),
                 RawTemplate("There is no cleaning this week - an email reminder has been sent to {{cleaner}} who is cleaning next week."),
                 cleanerOnNotice

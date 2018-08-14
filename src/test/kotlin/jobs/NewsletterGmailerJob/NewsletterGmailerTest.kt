@@ -161,7 +161,7 @@ class NewsletterGmailerTest {
                        ),
                 to = listOf(InternetAddress("carla@azar.com", cleaner)),
                 bcc = listOf(InternetAddress(config.get(NEWSLETTER_GMAILER_BCC_ADDRESS))),
-                subject = CompiledTemplate.from(RawTemplate(config.get(NEWSLETTER_GMAILER_SUBJECT_B)), mapOf("cleaner" to cleaner)).value,
+                subject = CompiledTemplate.from(RawTemplate(config.get(NEWSLETTER_GMAILER_SUBJECT_B)), mapOf("cleaner" to cleanerFirstName)).value,
                 body = config.get(NEWSLETTER_GMAILER_BODY_B)
         ).toGmailMessage()
 
