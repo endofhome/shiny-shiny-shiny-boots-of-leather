@@ -368,6 +368,33 @@ class NewsletterGmailerTest {
 
         assertThat(jobResult, equalTo("Exiting as this exact email has already been sent"))
     }
+
+    @Test
+    fun `Email shouldn't be sent twice on the same day`() {
+        val appState =
+                """
+          |{
+          |  "status": "CLEANING_THIS_WEEK",
+          |  "cleaner": {
+          |    "name": "Milford",
+          |    "email": "milford@graves.com"
+          |  },
+          |  "nextUp": {
+          |    "name": "Carla",
+          |    "surname": "Azar",
+          |    "email": "carla@azar.com"
+          |  },
+          |  "lastRanOn": "2018-06-04",
+          |  "emailContents": "any old contents"
+          |}
+          |""".trimMargin().trimIndent()
+        val stateFile = FileLike(appStatefilename, appState)
+        val dropboxClient = StubDropboxClient(mapOf(appStatefilename to stateFile, membersFilename to membersFile))
+
+        val jobResult = NewsletterGmailer(StubGmailClient(emptyList()), DropboxDatastore(dropboxClient, appStateMetadata), DropboxDatastore(dropboxClient, membersMetadata), config).run(time)
+
+        assertThat(jobResult, equalTo("Exiting as an email has already been sent today"))
+    }
 }
 
 private fun String.normaliseJsonString(): String =

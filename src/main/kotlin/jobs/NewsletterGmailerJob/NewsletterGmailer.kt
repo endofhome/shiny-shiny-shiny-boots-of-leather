@@ -42,7 +42,9 @@ import jobs.NewsletterGmailerJob.NewsletterGmailer.NewsletterGmailerStatus.CLEAN
 import jobs.NewsletterGmailerJob.NewsletterGmailer.NewsletterGmailerStatus.NOT_CLEANING_THIS_WEEK
 import jobs.NewsletterGmailerJob.TemplatedMessage.CompiledTemplate
 import jobs.NewsletterGmailerJob.TemplatedMessage.RawTemplate
+import result.AnEmailAlreadySentToday
 import result.CouldNotSendEmail
+import result.Err
 import result.NoNeedToRun
 import result.NoNeedToRunAtThisTime
 import result.NoNeedToRunOnThisDayOfWeek
@@ -124,7 +126,8 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
     }
 
     override fun run(now: ZonedDateTime): String =
-        shouldRun(now).flatMap { ExternalStateRetriever(appStateDatastore, membersDatastore).retrieve() }
+        shouldRunFor(now).flatMap { ExternalStateRetriever(appStateDatastore, membersDatastore).retrieve() }
+                      .flatMap { externalState -> externalState.checkNoEmailSentToday(now.toLocalDate()) }
                       .flatMap { externalState ->
                           when (externalState.appState.status) {
                               CLEANING_THIS_WEEK     -> cleaningContext(externalState)
@@ -139,18 +142,24 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
                                                 context.members.nextMemberAfter(context.cleanerOnNotice),
                                                 context.successMessage,
                                                 now) }
-                      .orElse { error -> error.message }
+                      .orElse { error: Err -> error.message }
 
-
-    private fun shouldRun(now: ZonedDateTime): Result<NoNeedToRun, ZonedDateTime> {
+    private fun shouldRunFor(now: ZonedDateTime): Result<NoNeedToRun, ZonedDateTime> {
         val daysToRun: List<DayOfWeek> = config.getAsListOf(NEWSLETTER_GMAILER_RUN_ON_DAYS, stringToDayOfWeek)
         val timeToRunAfter = LocalTime.parse(config.get(NEWSLETTER_GMAILER_RUN_AFTER_TIME), DateTimeFormatter.ofPattern("HH:mm"))
         val dayOfWeek = now.dayOfWeek
         val time = now.toLocalTime()
         return when {
-            daysToRun.contains(dayOfWeek).not() -> Failure(NoNeedToRunOnThisDayOfWeek(dayOfWeek, daysToRun))
+            daysToRun.contains(dayOfWeek).not()  -> Failure(NoNeedToRunOnThisDayOfWeek(dayOfWeek, daysToRun))
             time < timeToRunAfter                -> Failure(NoNeedToRunAtThisTime(time, timeToRunAfter))
             else                                 -> Success(now)
+        }
+    }
+
+    private fun ExternalState.checkNoEmailSentToday(now: LocalDate): Result<AnEmailAlreadySentToday, ExternalState> {
+        return when {
+            now == appState.lastRanOn -> Failure(AnEmailAlreadySentToday())
+            else                      -> this.asSuccess()
         }
     }
 

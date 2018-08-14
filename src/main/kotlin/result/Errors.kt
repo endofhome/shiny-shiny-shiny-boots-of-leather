@@ -31,6 +31,10 @@ class ThisEmailAlreadySent : Err {
     override val message = "Exiting as this exact email has already been sent"
 }
 
+class AnEmailAlreadySentToday : Err {
+    override val message = "Exiting as an email has already been sent today"
+}
+
 class AnEmailAlreadySentThisMonth(now: ZonedDateTime) : Err {
     override val message = "Exiting, email has already been sent for ${now.month.getDisplayName(TextStyle.FULL, Locale.getDefault())} ${now.year}"
 }
