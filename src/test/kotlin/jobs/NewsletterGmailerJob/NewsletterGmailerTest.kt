@@ -355,7 +355,7 @@ class NewsletterGmailerTest {
           |                    Bcc: fred@example.com
           |                    Subject: subject A
           |                    MIME-Version: 1.0
-          |                    Content-Type: text/plain; charset=us-ascii
+          |                    Content-Type: text/html; charset=utf-8; format=flowed
           |                    Content-Transfer-Encoding: 7bit
           |
           |                    body A"

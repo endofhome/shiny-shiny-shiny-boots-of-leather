@@ -30,7 +30,7 @@ class EmailTest {
             addRecipients(TO, to.toTypedArray())
             addRecipients(BCC, bcc.toTypedArray())
             setSubject(subject)
-            setText(body)
+            setContent(body, "text/html; charset=utf-8; format=flowed")
             writeTo(byteArrayOutputStream)
         }
         val base64String = Base64.getUrlEncoder().encodeToString(byteArrayOutputStream.toByteArray())

@@ -70,7 +70,7 @@ data class Email(val from: InternetAddress, val to: List<InternetAddress>, val b
             addRecipients(javax.mail.Message.RecipientType.TO, to.toTypedArray())
             addRecipients(javax.mail.Message.RecipientType.BCC, bcc.toTypedArray())
             setSubject(emailSubject)
-            setText(body)
+            setContent(body, "text/html; charset=utf-8; format=flowed")
             writeTo(byteArrayOutputStream)
         }
 
