@@ -45,7 +45,6 @@ import jobs.NewsletterGmailerJob.TemplatedMessage.CompiledTemplate
 import jobs.NewsletterGmailerJob.TemplatedMessage.RawTemplate
 import result.AnEmailAlreadySentToday
 import result.CouldNotSendEmail
-import result.Err
 import result.NoNeedToRun
 import result.NoNeedToRunAtThisTime
 import result.NoNeedToRunOnThisDayOfWeek
@@ -133,8 +132,8 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
                       .flatMap { externalState -> externalState.checkNoEmailSentToday(now.toLocalDate()) }
                       .flatMap { externalState ->
                           when (externalState.appState.status) {
-                              CLEANING_THIS_WEEK     -> cleaningContext(externalState)
-                              NOT_CLEANING_THIS_WEEK -> notCleaningContext(externalState)
+                              CLEANING_THIS_WEEK     -> notCleaningContext(externalState)
+                              NOT_CLEANING_THIS_WEEK -> cleaningContext(externalState)
                           }
                       }
                       .flatMap { context -> context.validateNotADuplicate() }
@@ -145,7 +144,7 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
                                                 context.members.nextMemberAfter(context.cleanerOnNotice),
                                                 context.successMessage,
                                                 now) }
-                      .orElse { error: Err -> error.message }
+                      .orElse { error -> error.message }
 
     private fun shouldRunFor(now: ZonedDateTime): Result<NoNeedToRun, ZonedDateTime> {
         val daysToRun: List<DayOfWeek> = config.getAsListOf(NEWSLETTER_GMAILER_RUN_ON_DAYS, stringToDayOfWeek)
@@ -167,7 +166,7 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
     }
 
     private fun cleaningContext(externalState: ExternalState): Success<Context> {
-        val cleanerOnNotice = externalState.appState.cleaner!!
+        val cleanerOnNotice = externalState.appState.nextUp
         val basicModel = mapOf("cleaner" to cleanerOnNotice.fullname())
         return Context(
                 externalState.appState,

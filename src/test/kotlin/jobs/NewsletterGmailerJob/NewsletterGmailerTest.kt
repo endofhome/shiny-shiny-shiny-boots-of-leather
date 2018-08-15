@@ -47,10 +47,10 @@ class NewsletterGmailerTest {
         set(NEWSLETTER_GMAILER_FROM_FULLNAME, "Bobby")
         set(NEWSLETTER_GMAILER_BCC_ADDRESS, "fred@example.com")
         set(NEWSLETTER_GMAILER_SUBJECT_A, "subject A with {{cleaner}}")
-        set(NEWSLETTER_GMAILER_BODY_A, "body A with {{cleaner}} and {{footer}}")
+        set(NEWSLETTER_GMAILER_BODY_A, "body A with {{cleaner}}")
         set(NEWSLETTER_GMAILER_SUBJECT_B, "subject B with {{cleaner}}")
-        set(NEWSLETTER_GMAILER_BODY_B, "body B with {{cleaner}} and {{footer}}")
-        set(NEWSLETTER_GMAILER_FOOTER, "some footer")
+        set(NEWSLETTER_GMAILER_BODY_B, "body B with {{cleaner}}")
+        set(NEWSLETTER_GMAILER_FOOTER, "<br>some footer")
     }.toMap()
     @Suppress("UNCHECKED_CAST")
     private val config = Configuration(configValues as Map<RequiredConfigItem, String>, NewsletterGmailerConfig(), null)
@@ -77,20 +77,21 @@ class NewsletterGmailerTest {
     private val membersMetadata = FlatFileApplicationStateMetadata(membersFile.name, NewsletterGmailer.Members::class.java)
 
     @Test
-    fun `Happy path when cleaning this week`() {
-        val cleanerFirstName = "Milford"
+    fun `Happy path when no cleaning shift scheduled this week`() {
+        val nextUpName = "Milford"
+        val nextUpEmailAddress = "milford@graves.com"
         val appState =
           """
           |{
           |  "status": "CLEANING_THIS_WEEK",
           |  "cleaner": {
-          |    "name": "$cleanerFirstName",
-          |    "email": "milford@graves.com"
-          |  },
-          |  "nextUp": {
           |    "name": "Carla",
           |    "surname": "Azar",
           |    "email": "carla@azar.com"
+          |  },
+          |  "nextUp": {
+          |    "name": "$nextUpName",
+          |    "email": "$nextUpEmailAddress"
           |  },
           |  "lastRanOn": "2018-07-20",
           |  "emailContents": "some announcement contents"
@@ -101,16 +102,18 @@ class NewsletterGmailerTest {
         val dropboxClient = StubDropboxClient(mapOf(appStatefilename to stateFile, membersFilename to membersFile))
         val gmailClient = StubGmailClient(emptyList())
 
+        val emailModel = mapOf("cleaner" to nextUpName)
         val expectedEmail = Email(
-                from = InternetAddress(
-                           config.get(NEWSLETTER_GMAILER_FROM_ADDRESS),
-                           config.get(NEWSLETTER_GMAILER_FROM_FULLNAME)
-                       ),
-                to = listOf(InternetAddress("milford@graves.com", "Milford"), InternetAddress("carla@azar.com", "Carla Azar")),
-                bcc = listOf(InternetAddress(config.get(NEWSLETTER_GMAILER_BCC_ADDRESS))),
-                subject = CompiledTemplate.from(RawTemplate(config.get(NEWSLETTER_GMAILER_SUBJECT_A)), mapOf("cleaner" to cleanerFirstName)).value,
-                body = CompiledTemplate.from(RawTemplate(config.get(NEWSLETTER_GMAILER_BODY_A)), mapOf("cleaner" to cleanerFirstName, "footer" to config.get(NEWSLETTER_GMAILER_FOOTER))).value
+            from = InternetAddress(
+                config.get(NEWSLETTER_GMAILER_FROM_ADDRESS),
+                config.get(NEWSLETTER_GMAILER_FROM_FULLNAME)
+            ),
+            to = listOf(InternetAddress(nextUpEmailAddress, nextUpName)),
+            bcc = listOf(InternetAddress(config.get(NEWSLETTER_GMAILER_BCC_ADDRESS))),
+            subject = CompiledTemplate.from(RawTemplate(config.get(NEWSLETTER_GMAILER_SUBJECT_B)), emailModel).value,
+            body = CompiledTemplate.from(RawTemplate(config.get(NEWSLETTER_GMAILER_BODY_B) + config.get(NEWSLETTER_GMAILER_FOOTER)), emailModel).value
         ).toGmailMessage()
+
         val expectedEndState =
           """
           |{
@@ -121,7 +124,7 @@ class NewsletterGmailerTest {
           |    "email": "carla@azar.com"
           |  },
           |  "lastRanOn": "2018-06-04",
-          |  "emailContents": "body A with Milford and some footer"
+          |  "emailContents": "body B with Milford<br>some footer"
           |}
           |""".trimMargin()
 
@@ -131,23 +134,23 @@ class NewsletterGmailerTest {
         assertEmailEqual(gmailClient.sentMail.last(), expectedEmail)
         assertThat(appStateDatastore.currentApplicationState().expectSuccess().asJsonString(), equalTo(expectedEndState.normaliseJsonString()))
         assertThat(jobResult, equalTo(
-                "Milford is cleaning this week - an email has been sent to all members.\n" +
-                        "Current state has been stored in Dropbox")
+            "There is no cleaning this week - an email reminder has been sent to Milford who is cleaning next week.\n" +
+                "Current state has been stored in Dropbox")
         )
     }
 
     @Test
-    fun `Happy path when no cleaning shift scheduled this week`() {
-        val cleanerFirstName = "Carla"
-        val cleanerLastName = "Azar"
-        val cleaner = "$cleanerFirstName $cleanerLastName"
+    fun `Happy path when cleaning this week`() {
+        val nextUpFirstName = "Carla"
+        val nextUpLastName = "Azar"
+        val nextUpFullName = "$nextUpFirstName $nextUpLastName"
         val state =
           """
           |{
           |  "status": "NOT_CLEANING_THIS_WEEK",
           |  "nextUp": {
-          |    "name": "$cleanerFirstName",
-          |    "surname": "$cleanerLastName",
+          |    "name": "$nextUpFirstName",
+          |    "surname": "$nextUpLastName",
           |    "email": "carla@azar.com"
           |  },
           |  "lastRanOn": "2018-07-27",
@@ -156,15 +159,16 @@ class NewsletterGmailerTest {
           |""".trimMargin()
         val stateFile = FileLike(appStatefilename, state)
 
+        val emailModel = mapOf("cleaner" to nextUpFullName)
         val expectedEmail = Email(
-                from = InternetAddress(
-                        config.get(NEWSLETTER_GMAILER_FROM_ADDRESS),
-                        config.get(NEWSLETTER_GMAILER_FROM_FULLNAME)
-                       ),
-                to = listOf(InternetAddress("carla@azar.com", cleaner)),
-                bcc = listOf(InternetAddress(config.get(NEWSLETTER_GMAILER_BCC_ADDRESS))),
-                subject = CompiledTemplate.from(RawTemplate(config.get(NEWSLETTER_GMAILER_SUBJECT_B)), mapOf("cleaner" to cleanerFirstName)).value,
-                body = CompiledTemplate.from(RawTemplate(config.get(NEWSLETTER_GMAILER_BODY_B)), mapOf("cleaner" to cleanerFirstName, "footer" to config.get(NEWSLETTER_GMAILER_FOOTER))).value
+            from = InternetAddress(
+                config.get(NEWSLETTER_GMAILER_FROM_ADDRESS),
+                config.get(NEWSLETTER_GMAILER_FROM_FULLNAME)
+            ),
+            to = listOf(InternetAddress("milford@graves.com", "Milford"), InternetAddress("carla@azar.com", "Carla Azar")),
+            bcc = listOf(InternetAddress(config.get(NEWSLETTER_GMAILER_BCC_ADDRESS))),
+            subject = CompiledTemplate.from(RawTemplate(config.get(NEWSLETTER_GMAILER_SUBJECT_A)), emailModel).value,
+            body = CompiledTemplate.from(RawTemplate(config.get(NEWSLETTER_GMAILER_BODY_A) + config.get(NEWSLETTER_GMAILER_FOOTER)), emailModel).value
         ).toGmailMessage()
 
         val expectedEndState =
@@ -181,7 +185,7 @@ class NewsletterGmailerTest {
           |    "email": "milford@graves.com"
           |  },
           |  "lastRanOn": "2018-06-04",
-          |  "emailContents": "body B with Carla and some footer"
+          |  "emailContents": "body A with Carla Azar<br>some footer"
           |}
           |""".trimMargin()
 
@@ -193,8 +197,8 @@ class NewsletterGmailerTest {
         assertEmailEqual(gmailClient.sentMail.last(), expectedEmail)
         assertThat(appStateDatastore.currentApplicationState().expectSuccess().asJsonString(), equalTo(expectedEndState.normaliseJsonString()))
         assertThat(jobResult, equalTo(
-                "There is no cleaning this week - an email reminder has been sent to Carla Azar who is cleaning next week.\n" +
-                        "Current state has been stored in Dropbox")
+            "Carla Azar is cleaning this week - an email has been sent to all members.\n" +
+                "Current state has been stored in Dropbox")
         )
     }
 
@@ -247,15 +251,10 @@ class NewsletterGmailerTest {
 
     @Test
     fun `Error message when email cannot be sent`() {
-        val cleanerFirstName = "Milford"
         val appState =
           """
           |{
-          |  "status": "CLEANING_THIS_WEEK",
-          |  "cleaner": {
-          |    "name": "$cleanerFirstName",
-          |    "email": "milford@graves.com"
-          |  },
+          |  "status": "NOT_CLEANING_THIS_WEEK",
           |  "nextUp": {
           |    "name": "Carla",
           |    "surname": "Azar",
@@ -274,7 +273,7 @@ class NewsletterGmailerTest {
         val jobResult = NewsletterGmailer(gmailClient, appDatastore, membersDatastore, config).run(time)
 
         assertThat(gmailClient.sentMail, equalTo(emptyList<Message>()))
-        assertThat(jobResult, equalTo("Error sending email with subject 'subject A with Milford' to Milford <milford@graves.com>, Carla Azar <carla@azar.com>"))
+        assertThat(jobResult, equalTo("Error sending email with subject 'subject A with Carla Azar' to Milford <milford@graves.com>, Carla Azar <carla@azar.com>"))
     }
 
     @Test
@@ -348,11 +347,7 @@ class NewsletterGmailerTest {
         val appState =
           """
           |{
-          |  "status": "CLEANING_THIS_WEEK",
-          |  "cleaner": {
-          |    "name": "Milford",
-          |    "email": "milford@graves.com"
-          |  },
+          |  "status": "NOT_CLEANING_THIS_WEEK",
           |  "nextUp": {
           |    "name": "Carla",
           |    "surname": "Azar",
@@ -362,12 +357,12 @@ class NewsletterGmailerTest {
           |  "emailContents": "From: Bobby <bob@example.com>
           |                    To: Milford <milford@graves.com>, Carla Azar <carla@azar.com>
           |                    Bcc: fred@example.com
-          |                    Subject: subject A with Milford
+          |                    Subject: subject A with Carla Azar
           |                    MIME-Version: 1.0
           |                    Content-Type: text/html; charset=utf-8; format=flowed
           |                    Content-Transfer-Encoding: 7bit
           |
-          |                    body A with Milford and some footer"
+          |                    body A with Carla Azar<br>some footer"
           |}
           |""".trimMargin().trimIndent()
         val stateFile = FileLike(appStatefilename, appState)
