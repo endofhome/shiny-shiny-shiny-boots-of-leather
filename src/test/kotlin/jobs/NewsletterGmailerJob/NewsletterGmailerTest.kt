@@ -20,6 +20,7 @@ import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerCo
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_BCC_ADDRESS
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_BODY_A
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_BODY_B
+import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_FOOTER
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_FROM_ADDRESS
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_FROM_FULLNAME
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_RUN_AFTER_TIME
@@ -46,9 +47,10 @@ class NewsletterGmailerTest {
         set(NEWSLETTER_GMAILER_FROM_FULLNAME, "Bobby")
         set(NEWSLETTER_GMAILER_BCC_ADDRESS, "fred@example.com")
         set(NEWSLETTER_GMAILER_SUBJECT_A, "subject A with {{cleaner}}")
-        set(NEWSLETTER_GMAILER_BODY_A, "body A")
+        set(NEWSLETTER_GMAILER_BODY_A, "body A with {{cleaner}} and {{footer}}")
         set(NEWSLETTER_GMAILER_SUBJECT_B, "subject B with {{cleaner}}")
-        set(NEWSLETTER_GMAILER_BODY_B, "body B")
+        set(NEWSLETTER_GMAILER_BODY_B, "body B with {{cleaner}} and {{footer}}")
+        set(NEWSLETTER_GMAILER_FOOTER, "some footer")
     }.toMap()
     @Suppress("UNCHECKED_CAST")
     private val config = Configuration(configValues as Map<RequiredConfigItem, String>, NewsletterGmailerConfig(), null)
@@ -107,7 +109,7 @@ class NewsletterGmailerTest {
                 to = listOf(InternetAddress("milford@graves.com", "Milford"), InternetAddress("carla@azar.com", "Carla Azar")),
                 bcc = listOf(InternetAddress(config.get(NEWSLETTER_GMAILER_BCC_ADDRESS))),
                 subject = CompiledTemplate.from(RawTemplate(config.get(NEWSLETTER_GMAILER_SUBJECT_A)), mapOf("cleaner" to cleanerFirstName)).value,
-                body = config.get(NEWSLETTER_GMAILER_BODY_A)
+                body = CompiledTemplate.from(RawTemplate(config.get(NEWSLETTER_GMAILER_BODY_A)), mapOf("cleaner" to cleanerFirstName, "footer" to config.get(NEWSLETTER_GMAILER_FOOTER))).value
         ).toGmailMessage()
         val expectedEndState =
           """
@@ -119,7 +121,7 @@ class NewsletterGmailerTest {
           |    "email": "carla@azar.com"
           |  },
           |  "lastRanOn": "2018-06-04",
-          |  "emailContents": "body A"
+          |  "emailContents": "body A with Milford and some footer"
           |}
           |""".trimMargin()
 
@@ -162,7 +164,7 @@ class NewsletterGmailerTest {
                 to = listOf(InternetAddress("carla@azar.com", cleaner)),
                 bcc = listOf(InternetAddress(config.get(NEWSLETTER_GMAILER_BCC_ADDRESS))),
                 subject = CompiledTemplate.from(RawTemplate(config.get(NEWSLETTER_GMAILER_SUBJECT_B)), mapOf("cleaner" to cleanerFirstName)).value,
-                body = config.get(NEWSLETTER_GMAILER_BODY_B)
+                body = CompiledTemplate.from(RawTemplate(config.get(NEWSLETTER_GMAILER_BODY_B)), mapOf("cleaner" to cleanerFirstName, "footer" to config.get(NEWSLETTER_GMAILER_FOOTER))).value
         ).toGmailMessage()
 
         val expectedEndState =
@@ -179,7 +181,7 @@ class NewsletterGmailerTest {
           |    "email": "milford@graves.com"
           |  },
           |  "lastRanOn": "2018-06-04",
-          |  "emailContents": "body B"
+          |  "emailContents": "body B with Carla and some footer"
           |}
           |""".trimMargin()
 
@@ -365,7 +367,7 @@ class NewsletterGmailerTest {
           |                    Content-Type: text/html; charset=utf-8; format=flowed
           |                    Content-Transfer-Encoding: 7bit
           |
-          |                    body A"
+          |                    body A with Milford and some footer"
           |}
           |""".trimMargin().trimIndent()
         val stateFile = FileLike(appStatefilename, appState)

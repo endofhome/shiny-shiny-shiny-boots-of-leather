@@ -26,6 +26,7 @@ import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerCo
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_BODY_A
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_BODY_B
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_DROPBOX_ACCESS_TOKEN
+import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_FOOTER
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_FROM_ADDRESS
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_FROM_FULLNAME
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_GMAIL_ACCESS_TOKEN
@@ -86,6 +87,7 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
             object NEWSLETTER_GMAILER_SUBJECT_B : NewsletterGmailerConfigItem()
             object NEWSLETTER_GMAILER_BODY_A : NewsletterGmailerConfigItem()
             object NEWSLETTER_GMAILER_BODY_B : NewsletterGmailerConfigItem()
+            object NEWSLETTER_GMAILER_FOOTER : NewsletterGmailerConfigItem()
         }
 
         class NewsletterGmailerConfig: RequiredConfig {
@@ -103,7 +105,8 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
                     NEWSLETTER_GMAILER_SUBJECT_A,
                     NEWSLETTER_GMAILER_SUBJECT_B,
                     NEWSLETTER_GMAILER_BODY_A,
-                    NEWSLETTER_GMAILER_BODY_B
+                    NEWSLETTER_GMAILER_BODY_B,
+                    NEWSLETTER_GMAILER_FOOTER
             )
         }
 
@@ -165,12 +168,13 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
 
     private fun cleaningContext(externalState: ExternalState): Success<Context> {
         val cleanerOnNotice = externalState.appState.cleaner!!
+        val basicModel = mapOf("cleaner" to cleanerOnNotice.fullname())
         return Context(
                 externalState.appState,
                 externalState.members,
                 externalState.members.allInternetAddresses(),
-                CompiledTemplate.from(RawTemplate(config.get(NEWSLETTER_GMAILER_SUBJECT_A)), mapOf("cleaner" to cleanerOnNotice.fullname())),
-                config.get(NEWSLETTER_GMAILER_BODY_A),
+                CompiledTemplate.from(RawTemplate(config.get(NEWSLETTER_GMAILER_SUBJECT_A)), basicModel),
+                CompiledTemplate.from(RawTemplate(config.get(NEWSLETTER_GMAILER_BODY_A) + config.get(NEWSLETTER_GMAILER_FOOTER)), basicModel),
                 RawTemplate("{{cleaner}} is cleaning this week - an email has been sent to all members."),
                 cleanerOnNotice
         ).asSuccess()
@@ -178,12 +182,13 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
 
     private fun notCleaningContext(externalState: ExternalState): Success<Context> {
         val cleanerOnNotice = externalState.appState.nextUp
+        val basicModel = mapOf("cleaner" to cleanerOnNotice.name)
         return Context(
                 externalState.appState,
                 externalState.members,
                 listOf(externalState.appState.nextUp.internetAddress()),
-                CompiledTemplate.from(RawTemplate(config.get(NEWSLETTER_GMAILER_SUBJECT_B)), mapOf("cleaner" to cleanerOnNotice.name)),
-                config.get(NEWSLETTER_GMAILER_BODY_B),
+                CompiledTemplate.from(RawTemplate(config.get(NEWSLETTER_GMAILER_SUBJECT_B)), basicModel),
+                CompiledTemplate.from(RawTemplate(config.get(NEWSLETTER_GMAILER_BODY_B) + config.get(NEWSLETTER_GMAILER_FOOTER)), basicModel),
                 RawTemplate("There is no cleaning this week - an email reminder has been sent to {{cleaner}} who is cleaning next week."),
                 cleanerOnNotice
         ).asSuccess()
@@ -220,7 +225,7 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
         val bccResult = config.get(NEWSLETTER_GMAILER_BCC_ADDRESS).toInternetAddresses()
         val bcc = (bccResult as Success).value
         val subject = emailSubject.value
-        val body = emailBody
+        val body = emailBody.value
         val email = Email(from, to, bcc, subject, body)
         return email.toGmailMessage()
     }
@@ -261,7 +266,7 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
             val members: Members,
             val recipients: List<InternetAddress>,
             val emailSubject: TemplatedMessage,
-            val emailBody: String,
+            val emailBody: TemplatedMessage,
             val successMessage: TemplatedMessage,
             val cleanerOnNotice: Member
     )
