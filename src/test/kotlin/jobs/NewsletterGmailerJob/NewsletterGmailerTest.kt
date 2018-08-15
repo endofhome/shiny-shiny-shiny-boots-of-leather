@@ -77,6 +77,69 @@ class NewsletterGmailerTest {
     private val membersMetadata = FlatFileApplicationStateMetadata(membersFile.name, NewsletterGmailer.Members::class.java)
 
     @Test
+    fun `Happy path when cleaning this week`() {
+        val nextUpFirstName = "Carla"
+        val nextUpLastName = "Azar"
+        val nextUpFullName = "$nextUpFirstName $nextUpLastName"
+        val state =
+            """
+          |{
+          |  "status": "NOT_CLEANING_THIS_WEEK",
+          |  "nextUp": {
+          |    "name": "$nextUpFirstName",
+          |    "surname": "$nextUpLastName",
+          |    "email": "carla@azar.com"
+          |  },
+          |  "lastRanOn": "2018-07-27",
+          |  "emailContents": "some reminder contents"
+          |}
+          |""".trimMargin()
+        val stateFile = FileLike(appStatefilename, state)
+
+        val emailModel = mapOf("cleaner" to nextUpFullName)
+        val expectedEmail = Email(
+            from = InternetAddress(
+                config.get(NEWSLETTER_GMAILER_FROM_ADDRESS),
+                config.get(NEWSLETTER_GMAILER_FROM_FULLNAME)
+            ),
+            to = listOf(InternetAddress("milford@graves.com", "Milford"), InternetAddress("carla@azar.com", "Carla Azar")),
+            bcc = listOf(InternetAddress(config.get(NEWSLETTER_GMAILER_BCC_ADDRESS))),
+            subject = CompiledTemplate.from(RawTemplate(config.get(NEWSLETTER_GMAILER_SUBJECT_A)), emailModel).value,
+            body = CompiledTemplate.from(RawTemplate(config.get(NEWSLETTER_GMAILER_BODY_A) + config.get(NEWSLETTER_GMAILER_FOOTER)), emailModel).value
+        ).toGmailMessage()
+
+        val expectedEndState =
+            """
+          |{
+          |  "status": "CLEANING_THIS_WEEK",
+          |  "cleaner": {
+          |    "name": "Carla",
+          |    "surname": "Azar",
+          |    "email": "carla@azar.com"
+          |  },
+          |  "nextUp": {
+          |    "name": "Milford",
+          |    "email": "milford@graves.com"
+          |  },
+          |  "lastRanOn": "2018-06-04",
+          |  "emailContents": "body A with Carla Azar<br>some footer"
+          |}
+          |""".trimMargin()
+
+        val dropboxClient = StubDropboxClient(mapOf(appStatefilename to stateFile, membersFilename to membersFile))
+        val gmailClient = StubGmailClient(emptyList())
+        val appStateDatastore = DropboxDatastore(dropboxClient, appStateMetadata)
+        val jobResult = NewsletterGmailer(gmailClient, appStateDatastore, DropboxDatastore(dropboxClient, membersMetadata), config).run(time)
+
+        assertEmailEqual(gmailClient.sentMail.last(), expectedEmail)
+        assertThat(appStateDatastore.currentApplicationState().expectSuccess().asJsonString(), equalTo(expectedEndState.normaliseJsonString()))
+        assertThat(jobResult, equalTo(
+            "Carla Azar is cleaning this week - an email has been sent to all members.\n" +
+                "Current state has been stored in Dropbox")
+        )
+    }
+
+    @Test
     fun `Happy path when no cleaning shift scheduled this week`() {
         val nextUpName = "Milford"
         val nextUpEmailAddress = "milford@graves.com"
@@ -135,69 +198,6 @@ class NewsletterGmailerTest {
         assertThat(appStateDatastore.currentApplicationState().expectSuccess().asJsonString(), equalTo(expectedEndState.normaliseJsonString()))
         assertThat(jobResult, equalTo(
             "There is no cleaning this week - an email reminder has been sent to Milford who is cleaning next week.\n" +
-                "Current state has been stored in Dropbox")
-        )
-    }
-
-    @Test
-    fun `Happy path when cleaning this week`() {
-        val nextUpFirstName = "Carla"
-        val nextUpLastName = "Azar"
-        val nextUpFullName = "$nextUpFirstName $nextUpLastName"
-        val state =
-          """
-          |{
-          |  "status": "NOT_CLEANING_THIS_WEEK",
-          |  "nextUp": {
-          |    "name": "$nextUpFirstName",
-          |    "surname": "$nextUpLastName",
-          |    "email": "carla@azar.com"
-          |  },
-          |  "lastRanOn": "2018-07-27",
-          |  "emailContents": "some reminder contents"
-          |}
-          |""".trimMargin()
-        val stateFile = FileLike(appStatefilename, state)
-
-        val emailModel = mapOf("cleaner" to nextUpFullName)
-        val expectedEmail = Email(
-            from = InternetAddress(
-                config.get(NEWSLETTER_GMAILER_FROM_ADDRESS),
-                config.get(NEWSLETTER_GMAILER_FROM_FULLNAME)
-            ),
-            to = listOf(InternetAddress("milford@graves.com", "Milford"), InternetAddress("carla@azar.com", "Carla Azar")),
-            bcc = listOf(InternetAddress(config.get(NEWSLETTER_GMAILER_BCC_ADDRESS))),
-            subject = CompiledTemplate.from(RawTemplate(config.get(NEWSLETTER_GMAILER_SUBJECT_A)), emailModel).value,
-            body = CompiledTemplate.from(RawTemplate(config.get(NEWSLETTER_GMAILER_BODY_A) + config.get(NEWSLETTER_GMAILER_FOOTER)), emailModel).value
-        ).toGmailMessage()
-
-        val expectedEndState =
-          """
-          |{
-          |  "status": "CLEANING_THIS_WEEK",
-          |  "cleaner": {
-          |    "name": "Carla",
-          |    "surname": "Azar",
-          |    "email": "carla@azar.com"
-          |  },
-          |  "nextUp": {
-          |    "name": "Milford",
-          |    "email": "milford@graves.com"
-          |  },
-          |  "lastRanOn": "2018-06-04",
-          |  "emailContents": "body A with Carla Azar<br>some footer"
-          |}
-          |""".trimMargin()
-
-        val dropboxClient = StubDropboxClient(mapOf(appStatefilename to stateFile, membersFilename to membersFile))
-        val gmailClient = StubGmailClient(emptyList())
-        val appStateDatastore = DropboxDatastore(dropboxClient, appStateMetadata)
-        val jobResult = NewsletterGmailer(gmailClient, appStateDatastore, DropboxDatastore(dropboxClient, membersMetadata), config).run(time)
-
-        assertEmailEqual(gmailClient.sentMail.last(), expectedEmail)
-        assertThat(appStateDatastore.currentApplicationState().expectSuccess().asJsonString(), equalTo(expectedEndState.normaliseJsonString()))
-        assertThat(jobResult, equalTo(
-            "Carla Azar is cleaning this week - an email has been sent to all members.\n" +
                 "Current state has been stored in Dropbox")
         )
     }
