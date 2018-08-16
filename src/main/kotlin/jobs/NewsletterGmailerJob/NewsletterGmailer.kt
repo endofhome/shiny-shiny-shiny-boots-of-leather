@@ -141,7 +141,7 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
                       .flatMap { context -> updateAppStateInDb(
                                                 context.toGmailMessage(),
                                                 context.appState,
-                                                context.members.nextMemberAfter(context.cleanerOnNotice),
+                                                context.cleanerOnNotice,
                                                 context.successMessage,
                                                 now) }
                       .orElse { error -> error.message }
@@ -167,28 +167,28 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
 
     private fun cleaningContext(externalState: ExternalState): Success<Context> {
         val cleanerOnNotice = externalState.appState.nextUp
-        val basicModel = mapOf("cleaner" to cleanerOnNotice.fullname())
+        val emailModel = mapOf("cleaner" to cleanerOnNotice.fullname())
         return Context(
                 externalState.appState,
                 externalState.members,
                 externalState.members.allInternetAddresses(),
-                CompiledTemplate.from(RawTemplate(config.get(NEWSLETTER_GMAILER_SUBJECT_A)), basicModel),
-                CompiledTemplate.from(RawTemplate(config.get(NEWSLETTER_GMAILER_BODY_A) + config.get(NEWSLETTER_GMAILER_FOOTER)), basicModel),
-                RawTemplate("{{cleaner}} is cleaning this week - an email has been sent to all members."),
-                cleanerOnNotice
+                CompiledTemplate.from(RawTemplate(config.get(NEWSLETTER_GMAILER_SUBJECT_A)), emailModel),
+                CompiledTemplate.from(RawTemplate(config.get(NEWSLETTER_GMAILER_BODY_A) + config.get(NEWSLETTER_GMAILER_FOOTER)), emailModel),
+                CompiledTemplate.from(RawTemplate("{{cleaner}} is cleaning this week - an email has been sent to all members."), emailModel),
+                externalState.members.nextMemberAfter(cleanerOnNotice)
         ).asSuccess()
     }
 
     private fun notCleaningContext(externalState: ExternalState): Success<Context> {
         val cleanerOnNotice = externalState.appState.nextUp
-        val basicModel = mapOf("cleaner" to cleanerOnNotice.name)
+        val emailModel = mapOf("cleaner" to cleanerOnNotice.name)
         return Context(
                 externalState.appState,
                 externalState.members,
                 listOf(externalState.appState.nextUp.internetAddress()),
-                CompiledTemplate.from(RawTemplate(config.get(NEWSLETTER_GMAILER_SUBJECT_B)), basicModel),
-                CompiledTemplate.from(RawTemplate(config.get(NEWSLETTER_GMAILER_BODY_B) + config.get(NEWSLETTER_GMAILER_FOOTER)), basicModel),
-                RawTemplate("There is no cleaning this week - an email reminder has been sent to {{cleaner}} who is cleaning next week."),
+                CompiledTemplate.from(RawTemplate(config.get(NEWSLETTER_GMAILER_SUBJECT_B)), emailModel),
+                CompiledTemplate.from(RawTemplate(config.get(NEWSLETTER_GMAILER_BODY_B) + config.get(NEWSLETTER_GMAILER_FOOTER)), emailModel),
+                CompiledTemplate.from(RawTemplate("There is no cleaning this week - an email reminder has been sent to {{cleaner}} who is cleaning next week."), emailModel),
                 cleanerOnNotice
         ).asSuccess()
     }
@@ -201,8 +201,7 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
         }
 
     private fun Context.sendAsGmailMessage(): Result<CouldNotSendEmail, Context> =
-        gmailClient.send(this.toGmailMessage(), this.emailSubject.value, this.recipients)
-                .map { this.copy(successMessage = CompiledTemplate.from(successMessage, mapOf("cleaner" to cleanerOnNotice.fullname())))}
+        gmailClient.send(this.toGmailMessage(), this.emailSubject.value, this.recipients).map { this }
 
     private fun updateAppStateInDb(message: Message, appState: NewsletterGmailerState, cleanerOnNotice: Member, successMessage: TemplatedMessage, now: ZonedDateTime): Result<DropboxWriteFailure, String> {
         val nextStatus: NewsletterGmailerStatus = appState.status.flip()

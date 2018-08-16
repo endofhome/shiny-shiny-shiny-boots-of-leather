@@ -182,9 +182,8 @@ class NewsletterGmailerTest {
           |{
           |  "status": "NOT_CLEANING_THIS_WEEK",
           |  "nextUp": {
-          |    "name": "Carla",
-          |    "surname": "Azar",
-          |    "email": "carla@azar.com"
+          |    "name": "$nextUpName",
+          |    "email": "$nextUpEmailAddress"
           |  },
           |  "lastRanOn": "2018-06-04",
           |  "emailContents": "body B with Milford<br>some footer"
