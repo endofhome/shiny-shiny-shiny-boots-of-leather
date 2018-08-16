@@ -212,7 +212,7 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
     }
 
     private fun thisMessageWasAlreadySent(message: Message, previousEmailContents: String) =
-            message.decodeRawAsStringWithoutMessageId() == MessageString(previousEmailContents).withoutMessageIdAsString()
+            message.decodeRawAsStringWithoutMessageId() == MessageString(previousEmailContents).asStringWithoutMessageId()
 
     private fun Context.toGmailMessage() : Message {
         val from = InternetAddress(
@@ -278,9 +278,9 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
                 currentApplicationState is Failure -> Failure(currentApplicationState.reason)
                 currentMembers is Failure          -> Failure(currentMembers.reason)
                 else                               -> Success(ExternalState(
-                        (currentApplicationState as Success).value,
-                        (currentMembers as Success).value
-                ))
+                                                          (currentApplicationState as Success).value,
+                                                          (currentMembers as Success).value
+                                                      ))
             }
         }
     }
@@ -295,9 +295,7 @@ data class NewsletterGmailerState(
 ) : ApplicationState
 
 data class Member(val name: String, val surname: String?, val email: String) {
-
-    fun internetAddress(): InternetAddress =
-            InternetAddress(email, fullname())
+    fun internetAddress(): InternetAddress = InternetAddress(email, fullname())
     fun fullname(): String = "$name${surname?.let { " $it" } ?: ""}"
 }
 
