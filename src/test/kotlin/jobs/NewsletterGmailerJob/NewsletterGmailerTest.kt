@@ -341,7 +341,7 @@ class NewsletterGmailerTest {
         )
         val jobResult = NewsletterGmailer(gmailClient, DropboxDatastore(dropboxClient, appStateMetadata), DropboxDatastore(dropboxClient, membersMetadata), localConfig).run(beforeTenThirty)
 
-        assertThat(jobResult, equalTo("No need to run - time is 4:14 in America/Sao_Paulo, only running after 4:15 in America/Sao_Paulo"))
+        assertThat(jobResult, equalTo("No need to run - time is 04:14 in America/Sao_Paulo, only running after 04:15 in America/Sao_Paulo"))
     }
 
     @Test

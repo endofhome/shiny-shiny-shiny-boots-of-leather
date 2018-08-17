@@ -21,7 +21,9 @@ class NoNeedToRunOnThisDayOfWeek(dayOfWeek: DayOfWeek, daysOfWeekToRun: List<Day
 
 class NoNeedToRunAtThisTime(now: ZonedDateTime, timeToRunAfter: ZonedDateTime, requiredTimeZone: ZoneId) : Err, NoNeedToRun  {
     private val timeZone = requiredTimeZone.getDisplayName(TextStyle.NARROW, Locale.getDefault())
-    override val message = "No need to run - time is ${now.hour}:${now.minute} in $timeZone, only running after ${timeToRunAfter.hour}:${timeToRunAfter.minute} in $timeZone"
+    override val message = "No need to run - time is ${now.hour.padded()}:${now.minute.padded()} in $timeZone, only running after ${timeToRunAfter.hour.padded()}:${timeToRunAfter.minute.padded()} in $timeZone"
+
+    private fun Int.padded() = this.toString().padStart(2, '0')
 }
 
 class InvalidStateInFuture : Err {
