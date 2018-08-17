@@ -24,6 +24,7 @@ import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerCo
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_FROM_ADDRESS
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_FROM_FULLNAME
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_RUN_AFTER_TIME
+import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_RUN_AFTER_TZDB
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_RUN_ON_DAYS
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_SUBJECT_A
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_SUBJECT_B
@@ -51,6 +52,7 @@ class NewsletterGmailerTest {
         set(NEWSLETTER_GMAILER_SUBJECT_B, "subject B with {{cleaner}}")
         set(NEWSLETTER_GMAILER_BODY_B, "body B with {{cleaner}}")
         set(NEWSLETTER_GMAILER_FOOTER, "<br>some footer")
+        set(NEWSLETTER_GMAILER_RUN_AFTER_TZDB, "Europe/London")
     }.toMap()
     @Suppress("UNCHECKED_CAST")
     private val config = Configuration(configValues as Map<RequiredConfigItem, String>, NewsletterGmailerConfig(), null)
@@ -330,15 +332,16 @@ class NewsletterGmailerTest {
         val stateFile = FileLike(appStatefilename, appState)
         val dropboxClient = StubDropboxClient(mapOf(appStatefilename to stateFile, membersFilename to membersFile))
         val gmailClient = StubGmailClient(emptyList())
-        val beforeTenThirty = ZonedDateTime.of(2018, 6, 4, 4, 14, 59, 0, ZoneOffset.UTC)
+        val beforeTenThirty = ZonedDateTime.of(2018, 6, 4, 7, 14, 59, 0, ZoneOffset.UTC)
         val localConfig = config.copy(
                 config = configValues.toMutableMap()
                         .apply { set(NEWSLETTER_GMAILER_RUN_AFTER_TIME, "04:15") }
+                        .apply { set(NEWSLETTER_GMAILER_RUN_AFTER_TZDB, "America/Sao_Paulo") }
                         .toMap()
         )
         val jobResult = NewsletterGmailer(gmailClient, DropboxDatastore(dropboxClient, appStateMetadata), DropboxDatastore(dropboxClient, membersMetadata), localConfig).run(beforeTenThirty)
 
-        assertThat(jobResult, equalTo("No need to run - time is 4:14, only running after 4:15"))
+        assertThat(jobResult, equalTo("No need to run - time is 4:14 in America/Sao_Paulo, only running after 4:15 in America/Sao_Paulo"))
     }
 
     @Test

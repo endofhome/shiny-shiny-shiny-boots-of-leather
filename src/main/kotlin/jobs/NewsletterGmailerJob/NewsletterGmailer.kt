@@ -7,6 +7,7 @@ import config.Configurator
 import config.RequiredConfig
 import config.RequiredConfigItem
 import config.stringToDayOfWeek
+import config.stringToInt
 import datastore.ApplicationState
 import datastore.DropboxDatastore
 import datastore.DropboxWriteFailure
@@ -34,6 +35,7 @@ import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerCo
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_GMAIL_REFRESH_TOKEN
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_JOB_NAME
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_RUN_AFTER_TIME
+import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_RUN_AFTER_TZDB
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_RUN_ON_DAYS
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_SUBJECT_A
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_SUBJECT_B
@@ -61,8 +63,8 @@ import java.nio.file.Paths
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.ZoneId
 import java.time.ZonedDateTime
-import java.time.format.DateTimeFormatter
 import javax.mail.internet.AddressException
 import javax.mail.internet.InternetAddress
 
@@ -87,6 +89,7 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
             object NEWSLETTER_GMAILER_BODY_A : NewsletterGmailerConfigItem()
             object NEWSLETTER_GMAILER_BODY_B : NewsletterGmailerConfigItem()
             object NEWSLETTER_GMAILER_FOOTER : NewsletterGmailerConfigItem()
+            object NEWSLETTER_GMAILER_RUN_AFTER_TZDB : NewsletterGmailerConfigItem()
         }
 
         class NewsletterGmailerConfig: RequiredConfig {
@@ -105,7 +108,8 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
                     NEWSLETTER_GMAILER_SUBJECT_B,
                     NEWSLETTER_GMAILER_BODY_A,
                     NEWSLETTER_GMAILER_BODY_B,
-                    NEWSLETTER_GMAILER_FOOTER
+                    NEWSLETTER_GMAILER_FOOTER,
+                    NEWSLETTER_GMAILER_RUN_AFTER_TZDB
             )
         }
 
@@ -148,13 +152,16 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
 
     private fun shouldRunFor(now: ZonedDateTime): Result<NoNeedToRun, ZonedDateTime> {
         val daysToRun: List<DayOfWeek> = config.getAsListOf(NEWSLETTER_GMAILER_RUN_ON_DAYS, stringToDayOfWeek)
-        val timeToRunAfter = LocalTime.parse(config.get(NEWSLETTER_GMAILER_RUN_AFTER_TIME), DateTimeFormatter.ofPattern("HH:mm"))
+        val timeFromConfig = config.getAsListOf(NEWSLETTER_GMAILER_RUN_AFTER_TIME, stringToInt, ':')
+        val timeToRunAfter = LocalTime.of(timeFromConfig[0], timeFromConfig[1])
+        val requiredTimeZone = ZoneId.of(config.get(NEWSLETTER_GMAILER_RUN_AFTER_TZDB))
+        val zonedDateTimeToRunAfter = ZonedDateTime.of(now.toLocalDate(), timeToRunAfter, requiredTimeZone)
         val dayOfWeek = now.dayOfWeek
-        val time = now.toLocalTime()
+        val nowInRequiredZone = now.withZoneSameInstant(requiredTimeZone)
         return when {
-            daysToRun.contains(dayOfWeek).not()  -> Failure(NoNeedToRunOnThisDayOfWeek(dayOfWeek, daysToRun))
-            time < timeToRunAfter                -> Failure(NoNeedToRunAtThisTime(time, timeToRunAfter))
-            else                                 -> Success(now)
+            daysToRun.contains(dayOfWeek).not()         -> Failure(NoNeedToRunOnThisDayOfWeek(dayOfWeek, daysToRun))
+            nowInRequiredZone < zonedDateTimeToRunAfter -> Failure(NoNeedToRunAtThisTime(nowInRequiredZone, zonedDateTimeToRunAfter, requiredTimeZone))
+            else                                        -> Success(now)
         }
     }
 

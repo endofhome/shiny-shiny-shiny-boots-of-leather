@@ -2,7 +2,7 @@ package result
 
 import com.github.jknack.handlebars.Handlebars
 import java.time.DayOfWeek
-import java.time.LocalTime
+import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.TextStyle
 import java.util.Locale
@@ -19,8 +19,9 @@ class NoNeedToRunOnThisDayOfWeek(dayOfWeek: DayOfWeek, daysOfWeekToRun: List<Day
     override val message = "No need to run - today is ${dayOfWeek.toString().toLowerCase().capitalize()}, only running on ${daysOfWeekToRun.joinToString(", ") { it.toString().toLowerCase().capitalize() }}"
 }
 
-class NoNeedToRunAtThisTime(now: LocalTime, timeToRunAfter: LocalTime) : Err, NoNeedToRun  {
-    override val message = "No need to run - time is ${now.hour}:${now.minute}, only running after ${timeToRunAfter.hour}:${timeToRunAfter.minute}"
+class NoNeedToRunAtThisTime(now: ZonedDateTime, timeToRunAfter: ZonedDateTime, requiredTimeZone: ZoneId) : Err, NoNeedToRun  {
+    private val timeZone = requiredTimeZone.getDisplayName(TextStyle.NARROW, Locale.getDefault())
+    override val message = "No need to run - time is ${now.hour}:${now.minute} in $timeZone, only running after ${timeToRunAfter.hour}:${timeToRunAfter.minute} in $timeZone"
 }
 
 class InvalidStateInFuture : Err {
