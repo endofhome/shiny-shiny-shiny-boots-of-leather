@@ -1,5 +1,6 @@
 package jobs.NewsletterGmailerJob
 
+import config.FormattedJobName
 import config.RequiredConfig
 import config.RequiredConfigItem
 import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_BCC_ADDRESS
@@ -19,21 +20,21 @@ import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_
 import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_SUBJECT_B
 
 sealed class NewsletterGmailerConfigItem(override val name: String) : RequiredConfigItem {
-    class NEWSLETTER_GMAILER_GMAIL_CLIENT_SECRET(jobName: String) : NewsletterGmailerConfigItem("${jobName}_GMAIL_CLIENT_SECRET")
-    class NEWSLETTER_GMAILER_GMAIL_ACCESS_TOKEN(jobName: String) : NewsletterGmailerConfigItem("${jobName}_GMAIL_ACCESS_TOKEN")
-    class NEWSLETTER_GMAILER_GMAIL_REFRESH_TOKEN(jobName: String) : NewsletterGmailerConfigItem("${jobName}_GMAIL_REFRESH_TOKEN")
-    class NEWSLETTER_GMAILER_DROPBOX_ACCESS_TOKEN(jobName: String) : NewsletterGmailerConfigItem("${jobName}_DROPBOX_ACCESS_TOKEN")
-    class NEWSLETTER_GMAILER_RUN_ON_DAYS(jobName: String) : NewsletterGmailerConfigItem("${jobName}_RUN_ON_DAYS")
-    class NEWSLETTER_GMAILER_RUN_AFTER_TIME(jobName: String) : NewsletterGmailerConfigItem("${jobName}_RUN_AFTER_TIME")
-    class NEWSLETTER_GMAILER_FROM_ADDRESS(jobName: String) : NewsletterGmailerConfigItem(  "${jobName}_FROM_ADDRESS")
-    class NEWSLETTER_GMAILER_FROM_FULLNAME(jobName: String) : NewsletterGmailerConfigItem("${jobName}_FROM_FULLNAME")
-    class NEWSLETTER_GMAILER_BCC_ADDRESS(jobName: String) : NewsletterGmailerConfigItem(  "${jobName}_BCC_ADDRESS")
-    class NEWSLETTER_GMAILER_SUBJECT_A(jobName: String) : NewsletterGmailerConfigItem(  "${jobName}_SUBJECT_A")
-    class NEWSLETTER_GMAILER_SUBJECT_B(jobName: String) : NewsletterGmailerConfigItem("${jobName}_SUBJECT_B")
-    class NEWSLETTER_GMAILER_BODY_A(jobName: String) : NewsletterGmailerConfigItem(   "${jobName}_BODY_A")
-    class NEWSLETTER_GMAILER_BODY_B(jobName: String) : NewsletterGmailerConfigItem("${jobName}_BODY_B")
-    class NEWSLETTER_GMAILER_FOOTER(jobName: String) : NewsletterGmailerConfigItem("${jobName}_FOOTER")
-    class NEWSLETTER_GMAILER_RUN_AFTER_TZDB(jobName: String) : NewsletterGmailerConfigItem("${jobName}_RUN_AFTER_TZDB")
+    class NEWSLETTER_GMAILER_GMAIL_CLIENT_SECRET(jobName: FormattedJobName) : NewsletterGmailerConfigItem("${jobName}_GMAIL_CLIENT_SECRET")
+    class NEWSLETTER_GMAILER_GMAIL_ACCESS_TOKEN(jobName: FormattedJobName) : NewsletterGmailerConfigItem("${jobName}_GMAIL_ACCESS_TOKEN")
+    class NEWSLETTER_GMAILER_GMAIL_REFRESH_TOKEN(jobName: FormattedJobName) : NewsletterGmailerConfigItem("${jobName}_GMAIL_REFRESH_TOKEN")
+    class NEWSLETTER_GMAILER_DROPBOX_ACCESS_TOKEN(jobName: FormattedJobName) : NewsletterGmailerConfigItem("${jobName}_DROPBOX_ACCESS_TOKEN")
+    class NEWSLETTER_GMAILER_RUN_ON_DAYS(jobName: FormattedJobName) : NewsletterGmailerConfigItem("${jobName}_RUN_ON_DAYS")
+    class NEWSLETTER_GMAILER_RUN_AFTER_TIME(jobName: FormattedJobName) : NewsletterGmailerConfigItem("${jobName}_RUN_AFTER_TIME")
+    class NEWSLETTER_GMAILER_FROM_ADDRESS(jobName: FormattedJobName) : NewsletterGmailerConfigItem(  "${jobName}_FROM_ADDRESS")
+    class NEWSLETTER_GMAILER_FROM_FULLNAME(jobName: FormattedJobName) : NewsletterGmailerConfigItem("${jobName}_FROM_FULLNAME")
+    class NEWSLETTER_GMAILER_BCC_ADDRESS(jobName: FormattedJobName) : NewsletterGmailerConfigItem(  "${jobName}_BCC_ADDRESS")
+    class NEWSLETTER_GMAILER_SUBJECT_A(jobName: FormattedJobName) : NewsletterGmailerConfigItem(  "${jobName}_SUBJECT_A")
+    class NEWSLETTER_GMAILER_SUBJECT_B(jobName: FormattedJobName) : NewsletterGmailerConfigItem("${jobName}_SUBJECT_B")
+    class NEWSLETTER_GMAILER_BODY_A(jobName: FormattedJobName) : NewsletterGmailerConfigItem(   "${jobName}_BODY_A")
+    class NEWSLETTER_GMAILER_BODY_B(jobName: FormattedJobName) : NewsletterGmailerConfigItem("${jobName}_BODY_B")
+    class NEWSLETTER_GMAILER_FOOTER(jobName: FormattedJobName) : NewsletterGmailerConfigItem("${jobName}_FOOTER")
+    class NEWSLETTER_GMAILER_RUN_AFTER_TZDB(jobName: FormattedJobName) : NewsletterGmailerConfigItem("${jobName}_RUN_AFTER_TZDB")
 }
 
 class NewsletterGmailerConfig(jobName: String): RequiredConfig(jobName) {

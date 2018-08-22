@@ -52,20 +52,20 @@ import javax.mail.internet.AddressException
 import javax.mail.internet.InternetAddress
 
 class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val appStateDatastore: DropboxDatastore<NewsletterGmailerState>, private val membersDatastore: DropboxDatastore<Members>, private val config: Configuration): Job {
-    override val jobName = config.requiredConfig.jobName
+    override val jobName = config.requiredConfig.formattedJobName
 
     companion object: JobCompanion {
         override fun initialise(requiredConfig: RequiredConfig): NewsletterGmailer {
             val config = Configurator(requiredConfig, Paths.get("credentials"))
-            val jobName = config.requiredConfig.jobName
+            val jobName = config.requiredConfig.formattedJobName
             val gmailSecrets = GmailSecrets(
                     config.get(NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_GMAIL_CLIENT_SECRET(jobName)),
                     config.get(NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_GMAIL_ACCESS_TOKEN(jobName)),
                     config.get(NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_GMAIL_REFRESH_TOKEN(jobName))
             )
-            val gmail = AuthorisedGmailProvider(4000, jobName, gmailSecrets, config).gmail()
+            val gmail = AuthorisedGmailProvider(4000, jobName.value, gmailSecrets, config).gmail()
             val gmailClient = HttpGmailClient(gmail)
-            val dropboxClient = HttpDropboxClient(jobName, config.get(NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_DROPBOX_ACCESS_TOKEN(jobName)))
+            val dropboxClient = HttpDropboxClient(jobName.value, config.get(NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_DROPBOX_ACCESS_TOKEN(jobName)))
             val appStateMetadata = FlatFileApplicationStateMetadata("/newsletter_gmailer.json", NewsletterGmailerState::class.java)
             val appStateDatastore = DropboxDatastore(dropboxClient, appStateMetadata)
             val membersMetadata = FlatFileApplicationStateMetadata("/members2.json", Members::class.java)

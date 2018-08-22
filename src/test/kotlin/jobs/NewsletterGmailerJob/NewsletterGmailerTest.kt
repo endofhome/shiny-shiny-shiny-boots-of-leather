@@ -4,6 +4,7 @@ import com.google.api.services.gmail.model.Message
 import com.natpryce.hamkrest.assertion.assertThat
 import com.natpryce.hamkrest.equalTo
 import config.Configuration
+import config.FormattedJobName
 import config.RequiredConfigItem
 import datastore.DropboxDatastore
 import datastore.ErrorDownloadingFileFromDropbox
@@ -35,12 +36,12 @@ import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import javax.mail.internet.InternetAddress
 
-const val jobName = "TEST_JOB"
+val jobName = FormattedJobName("TEST_JOB")
 
 class NewsletterGmailerTest {
 
     private val time = ZonedDateTime.of(2018, 6, 4, 10, 30, 0, 0, ZoneOffset.UTC)
-    private val baseConfigValues = NewsletterGmailerConfig(jobName).values().associate { it to "unused" }.toMutableMap()
+    private val baseConfigValues = NewsletterGmailerConfig(jobName.value).values().associate { it to "unused" }.toMutableMap()
     private val configValues: Map<NewsletterGmailerConfigItem, String> = baseConfigValues.apply {
         removeAndSet(NEWSLETTER_GMAILER_RUN_ON_DAYS(jobName), "Monday")
         removeAndSet(NEWSLETTER_GMAILER_RUN_AFTER_TIME(jobName), "10:30")
@@ -61,7 +62,7 @@ class NewsletterGmailerTest {
     }
 
     @Suppress("UNCHECKED_CAST")
-    private val config = Configuration(configValues as Map<RequiredConfigItem, String>, NewsletterGmailerConfig(jobName), null)
+    private val config = Configuration(configValues as Map<RequiredConfigItem, String>, NewsletterGmailerConfig(jobName.value), null)
     private val membersState =
           """
           |{

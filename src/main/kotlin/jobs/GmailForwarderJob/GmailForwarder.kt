@@ -55,7 +55,7 @@ import javax.mail.Message.RecipientType
 import javax.mail.internet.InternetAddress
 
 class GmailForwarder(private val gmailClient: SimpleGmailClient, private val dropboxClient: SimpleDropboxClient, private val config: Configuration): Job {
-    override val jobName: String = config.get(GMAIL_FORWARDER_JOB_NAME)
+    override val jobName = config.requiredConfig.formattedJobName
 
     companion object: JobCompanion {
 
