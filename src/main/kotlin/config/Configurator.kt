@@ -29,7 +29,7 @@ interface RequiredConfigItem: Comparable<RequiredConfigItem> {
     val name: String get() = this.javaClass.simpleName
 }
 
-abstract class RequiredConfig(val jobName: String) {
+abstract class RequiredConfig(private val jobName: String) {
     val formattedJobName: FormattedJobName = formatJobName()
     abstract fun values(): Set<RequiredConfigItem>
 

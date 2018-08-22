@@ -37,6 +37,6 @@ class MainConfig : RequiredConfig("Shiny Shiny Shiny Boots of Leather") {
 }
 
 sealed class MainConfigItem(override val name: String) : RequiredConfigItem {
-    class MAIN_GMAIL_FORWARDER_JOB_NAME(jobName: FormattedJobName) : MainConfigItem("${jobName}_GMAIL_FORWARDER_JOB_NAME")
-    class MAIN_NEWSLETTER_GMAILER_JOB_NAME(jobName: FormattedJobName) : MainConfigItem("${jobName}_GMAIL_NEWSLETTER_GMAILER_JOB_NAME")
+    class MAIN_GMAIL_FORWARDER_JOB_NAME(jobName: FormattedJobName) : MainConfigItem("${jobName.value}_GMAIL_FORWARDER_JOB_NAME")
+    class MAIN_NEWSLETTER_GMAILER_JOB_NAME(jobName: FormattedJobName) : MainConfigItem("${jobName.value}_GMAIL_NEWSLETTER_GMAILER_JOB_NAME")
 }
