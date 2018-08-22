@@ -29,6 +29,11 @@ interface RequiredConfigItem: Comparable<RequiredConfigItem> {
     val name: String get() = this.javaClass.simpleName
 }
 
+fun <T : RequiredConfigItem> MutableMap<T, String>.removeAndSet(configItem: T, value: String) {
+    remove(this.filter { it.key.name == configItem.name }.keys.first())
+    set(configItem, value)
+}
+
 abstract class RequiredConfig(private val jobName: String) {
     val formattedJobName: FormattedJobName = formatJobName()
     abstract fun values(): Set<RequiredConfigItem>

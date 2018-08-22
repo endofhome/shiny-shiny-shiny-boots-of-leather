@@ -5,19 +5,20 @@ import com.natpryce.hamkrest.assertion.assertThat
 import com.natpryce.hamkrest.equalTo
 import config.Configuration
 import config.RequiredConfigItem
+import config.removeAndSet
 import datastore.DropboxWriteFailure
 import datastore.ErrorDownloadingFileFromDropbox
 import datastore.SimpleDropboxClient
 import gmail.SimpleGmailClient
 import jobs.GmailForwarderJob.GmailForwarder
-import jobs.GmailForwarderJob.GmailForwarder.Companion.GmailForwarderConfig
-import jobs.GmailForwarderJob.GmailForwarder.Companion.GmailForwarderConfigItem
-import jobs.GmailForwarderJob.GmailForwarder.Companion.GmailForwarderConfigItem.GMAIL_FORWARDER_BCC_ADDRESS
-import jobs.GmailForwarderJob.GmailForwarder.Companion.GmailForwarderConfigItem.GMAIL_FORWARDER_FROM_ADDRESS
-import jobs.GmailForwarderJob.GmailForwarder.Companion.GmailForwarderConfigItem.GMAIL_FORWARDER_GMAIL_QUERY
-import jobs.GmailForwarderJob.GmailForwarder.Companion.GmailForwarderConfigItem.GMAIL_FORWARDER_RUN_ON_DAYS
-import jobs.GmailForwarderJob.GmailForwarder.Companion.GmailForwarderConfigItem.GMAIL_FORWARDER_TO_ADDRESS
-import jobs.GmailForwarderJob.GmailForwarder.Companion.GmailForwarderConfigItem.GMAIL_FORWARDER_TO_FULLNAME
+import jobs.GmailForwarderJob.GmailForwarderConfig
+import jobs.GmailForwarderJob.GmailForwarderConfigItem
+import jobs.GmailForwarderJob.GmailForwarderConfigItem.GMAIL_FORWARDER_BCC_ADDRESS
+import jobs.GmailForwarderJob.GmailForwarderConfigItem.GMAIL_FORWARDER_FROM_ADDRESS
+import jobs.GmailForwarderJob.GmailForwarderConfigItem.GMAIL_FORWARDER_GMAIL_QUERY
+import jobs.GmailForwarderJob.GmailForwarderConfigItem.GMAIL_FORWARDER_RUN_ON_DAYS
+import jobs.GmailForwarderJob.GmailForwarderConfigItem.GMAIL_FORWARDER_TO_ADDRESS
+import jobs.GmailForwarderJob.GmailForwarderConfigItem.GMAIL_FORWARDER_TO_FULLNAME
 import org.junit.Test
 import result.CouldNotSendEmail
 import result.Result
@@ -28,16 +29,16 @@ import java.time.ZonedDateTime
 import javax.mail.internet.InternetAddress
 
 class GmailForwarderTest {
-
     private val time = ZonedDateTime.of(2018, 6, 1, 0, 0, 0, 0, UTC)
     private val requiredConfig = GmailForwarderConfig("TEST_JOB")
+    private val jobName = requiredConfig.formattedJobName
     private val baseConfigValues = requiredConfig.values().associate { it to "unused" }.toMutableMap()
     private val configValues: Map<GmailForwarderConfigItem, String> = baseConfigValues.apply {
-        set(GMAIL_FORWARDER_RUN_ON_DAYS, "1")
-        set(GMAIL_FORWARDER_TO_FULLNAME, "Jim")
-        set(GMAIL_FORWARDER_TO_ADDRESS, "jim@example.com")
-        set(GMAIL_FORWARDER_FROM_ADDRESS, "bob@example.com")
-        set(GMAIL_FORWARDER_BCC_ADDRESS, "fred@example.com")
+        removeAndSet(GMAIL_FORWARDER_RUN_ON_DAYS(jobName), "1")
+        removeAndSet(GMAIL_FORWARDER_TO_FULLNAME(jobName), "Jim")
+        removeAndSet(GMAIL_FORWARDER_TO_ADDRESS(jobName), "jim@example.com")
+        removeAndSet(GMAIL_FORWARDER_FROM_ADDRESS(jobName), "bob@example.com")
+        removeAndSet(GMAIL_FORWARDER_BCC_ADDRESS(jobName), "fred@example.com")
     }.toMap()
     @Suppress("UNCHECKED_CAST")
     private val config = Configuration(configValues as Map<RequiredConfigItem, String>, requiredConfig, null)
@@ -140,7 +141,7 @@ class GmailForwarderTest {
         val firstOfJune = ZonedDateTime.of(2018, 6, 1, 0, 0, 0, 0, UTC)
         val localConfig = config.copy(
                 config = configValues.toMutableMap()
-                                     .apply { set(GMAIL_FORWARDER_RUN_ON_DAYS, "2, 11,12, 31 ") }
+                                     .apply { removeAndSet(GMAIL_FORWARDER_RUN_ON_DAYS(jobName), "2, 11,12, 31 ") }
                                      .toMap()
         )
         val jobResult = GmailForwarder(StubGmailClient(emails), dropboxClient, localConfig).run(firstOfJune)
@@ -212,7 +213,7 @@ class GmailForwarderTest {
         val dropboxClient = StubDropboxClient(mapOf(stateFilename to stateFile))
         val localConfig = config.copy(
                 config = configValues.toMutableMap()
-                                     .apply { set(GMAIL_FORWARDER_GMAIL_QUERY, "some search query") }
+                                     .apply { removeAndSet(GMAIL_FORWARDER_GMAIL_QUERY(jobName), "some search query") }
                                      .toMap()
         )
         val jobResult = GmailForwarder(StubGmailClientThatReturnsNoMatches(emptyList()), dropboxClient, localConfig).run(time)

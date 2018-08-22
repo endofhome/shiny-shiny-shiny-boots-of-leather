@@ -6,6 +6,7 @@ import com.natpryce.hamkrest.equalTo
 import config.Configuration
 import config.FormattedJobName
 import config.RequiredConfigItem
+import config.removeAndSet
 import datastore.DropboxDatastore
 import datastore.ErrorDownloadingFileFromDropbox
 import datastore.FlatFileApplicationStateMetadata
@@ -55,11 +56,6 @@ class NewsletterGmailerTest {
         removeAndSet(NEWSLETTER_GMAILER_FOOTER(jobName), "<br>some footer")
         removeAndSet(NEWSLETTER_GMAILER_RUN_AFTER_TZDB(jobName), "Europe/London")
     }.toMap()
-
-    private fun MutableMap<NewsletterGmailerConfigItem, String>.removeAndSet(configItem: NewsletterGmailerConfigItem, value: String) {
-        remove(this.filter { it.key.name == configItem.name }.keys.first())
-        set(configItem, value)
-    }
 
     @Suppress("UNCHECKED_CAST")
     private val config = Configuration(configValues as Map<RequiredConfigItem, String>, NewsletterGmailerConfig(jobName.value), null)
