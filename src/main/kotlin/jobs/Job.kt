@@ -9,5 +9,5 @@ interface Job {
 }
 
 interface JobCompanion {
-    fun initialise(jobName: String, requiredConfig: RequiredConfig): Job
+    fun initialise(requiredConfig: RequiredConfig): Job
 }

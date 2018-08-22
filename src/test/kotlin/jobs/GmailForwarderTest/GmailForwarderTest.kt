@@ -30,7 +30,8 @@ import javax.mail.internet.InternetAddress
 class GmailForwarderTest {
 
     private val time = ZonedDateTime.of(2018, 6, 1, 0, 0, 0, 0, UTC)
-    private val baseConfigValues = GmailForwarderConfig().values().associate { it to "unused" }.toMutableMap()
+    private val requiredConfig = GmailForwarderConfig("TEST_JOB")
+    private val baseConfigValues = requiredConfig.values().associate { it to "unused" }.toMutableMap()
     private val configValues: Map<GmailForwarderConfigItem, String> = baseConfigValues.apply {
         set(GMAIL_FORWARDER_RUN_ON_DAYS, "1")
         set(GMAIL_FORWARDER_TO_FULLNAME, "Jim")
@@ -39,7 +40,7 @@ class GmailForwarderTest {
         set(GMAIL_FORWARDER_BCC_ADDRESS, "fred@example.com")
     }.toMap()
     @Suppress("UNCHECKED_CAST")
-    private val config = Configuration(configValues as Map<RequiredConfigItem, String>, GmailForwarderConfig(), null)
+    private val config = Configuration(configValues as Map<RequiredConfigItem, String>, requiredConfig, null)
     private val stateFilename = "/gmailer_state.json"
 
     @Test

@@ -3,7 +3,7 @@ package config
 import java.nio.file.Path
 import java.time.DayOfWeek
 
-data class Configuration(private val config: Map<RequiredConfigItem, String?>, private val requiredConfig: RequiredConfig, val configDir: Path?) {
+data class Configuration(private val config: Map<RequiredConfigItem, String?>, val requiredConfig: RequiredConfig, val configDir: Path?) {
 
     init {
         validate(requiredConfig.values().toSet(), config)

@@ -6,8 +6,8 @@ import jobs.NewsletterGmailerJob.NewsletterGmailerConfig
 import java.time.ZonedDateTime
 
 fun main(args: Array<String>) {
-    val gmailForwarder = GmailForwarder.initialise("unused job name", GmailForwarderConfig())
-    val newsletterGmailer = NewsletterGmailer.initialise("some job", NewsletterGmailerConfig("some job"))
+    val gmailForwarder = GmailForwarder.initialise(GmailForwarderConfig("some job"))
+    val newsletterGmailer = NewsletterGmailer.initialise(NewsletterGmailerConfig("another job"))
     val jobs: List<Job> = listOf(
             gmailForwarder,
             newsletterGmailer

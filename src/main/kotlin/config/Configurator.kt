@@ -30,6 +30,9 @@ interface RequiredConfigItem: Comparable<RequiredConfigItem> {
 }
 
 interface RequiredConfig {
+    val jobName: String
+    val formattedJobName: String
+    fun formatJobName() = jobName.toUpperCase().replace(' ', '_')
     fun values(): Set<RequiredConfigItem>
 }
 

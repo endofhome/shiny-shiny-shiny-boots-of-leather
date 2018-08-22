@@ -51,11 +51,13 @@ import java.time.ZonedDateTime
 import javax.mail.internet.AddressException
 import javax.mail.internet.InternetAddress
 
-class NewsletterGmailer(override val jobName: String, private val gmailClient: SimpleGmailClient, private val appStateDatastore: DropboxDatastore<NewsletterGmailerState>, private val membersDatastore: DropboxDatastore<Members>, private val config: Configuration): Job {
+class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val appStateDatastore: DropboxDatastore<NewsletterGmailerState>, private val membersDatastore: DropboxDatastore<Members>, private val config: Configuration): Job {
+    override val jobName = config.requiredConfig.jobName
 
     companion object: JobCompanion {
-        override fun initialise(jobName: String, requiredConfig: RequiredConfig): NewsletterGmailer {
+        override fun initialise(requiredConfig: RequiredConfig): NewsletterGmailer {
             val config = Configurator(requiredConfig, Paths.get("credentials"))
+            val jobName = config.requiredConfig.jobName
             val gmailSecrets = GmailSecrets(
                     config.get(NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_GMAIL_CLIENT_SECRET(jobName)),
                     config.get(NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_GMAIL_ACCESS_TOKEN(jobName)),
@@ -68,7 +70,7 @@ class NewsletterGmailer(override val jobName: String, private val gmailClient: S
             val appStateDatastore = DropboxDatastore(dropboxClient, appStateMetadata)
             val membersMetadata = FlatFileApplicationStateMetadata("/members2.json", Members::class.java)
             val membersDatastore = DropboxDatastore(dropboxClient, membersMetadata)
-            return NewsletterGmailer(jobName, gmailClient, appStateDatastore, membersDatastore, config)
+            return NewsletterGmailer(gmailClient, appStateDatastore, membersDatastore, config)
         }
     }
 
