@@ -74,8 +74,7 @@ class GmailForwarder(private val gmailClient: SimpleGmailClient, private val dro
             object GMAIL_FORWARDER_BCC_ADDRESS : GmailForwarderConfigItem()
         }
 
-        class GmailForwarderConfig(override val jobName: String) : RequiredConfig {
-            override val formattedJobName: String = formatJobName()
+        class GmailForwarderConfig(jobName: String) : RequiredConfig(jobName) {
 
             override fun values() = setOf(
                 GMAIL_FORWARDER_JOB_NAME,

@@ -29,11 +29,11 @@ interface RequiredConfigItem: Comparable<RequiredConfigItem> {
     val name: String get() = this.javaClass.simpleName
 }
 
-interface RequiredConfig {
-    val jobName: String
-    val formattedJobName: String
-    fun formatJobName() = jobName.toUpperCase().replace(' ', '_')
-    fun values(): Set<RequiredConfigItem>
+abstract class RequiredConfig(val jobName: String) {
+    val formattedJobName = formatJobName()
+    abstract fun values(): Set<RequiredConfigItem>
+
+    private fun formatJobName() = jobName.toUpperCase().replace(' ', '_')
 }
 
 object Configurator {

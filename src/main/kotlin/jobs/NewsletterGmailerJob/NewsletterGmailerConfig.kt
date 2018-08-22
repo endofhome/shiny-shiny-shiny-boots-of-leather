@@ -36,8 +36,7 @@ sealed class NewsletterGmailerConfigItem(override val name: String) : RequiredCo
     class NEWSLETTER_GMAILER_RUN_AFTER_TZDB(jobName: String) : NewsletterGmailerConfigItem("${jobName}_RUN_AFTER_TZDB")
 }
 
-class NewsletterGmailerConfig(override val jobName: String): RequiredConfig {
-    override val formattedJobName: String = formatJobName()
+class NewsletterGmailerConfig(jobName: String): RequiredConfig(jobName) {
 
     override fun values() = setOf(
             NEWSLETTER_GMAILER_GMAIL_CLIENT_SECRET(formattedJobName),
