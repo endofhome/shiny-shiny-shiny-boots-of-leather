@@ -10,7 +10,7 @@ data class Configuration(private val config: Map<RequiredConfigItem, String?>, v
     }
 
     fun get(item: RequiredConfigItem): String = try {
-        this.config.filter { it.key.name == item.name }.toList().first().second!!
+        this.config.filter { it.key.name == item.name }.values.first()!!
     } catch (e: Exception) {
         throw ConfigurationException("${item.name} was not available during get")
     }
