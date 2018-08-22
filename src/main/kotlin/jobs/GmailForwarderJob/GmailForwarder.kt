@@ -91,8 +91,8 @@ class GmailForwarder(private val gmailClient: SimpleGmailClient, private val dro
             )
         }
 
-        override fun initialise(): GmailForwarder {
-            val config = Configurator(GmailForwarderConfig(), Paths.get("credentials"))
+        override fun initialise(jobName: String, requiredConfig: RequiredConfig): GmailForwarder {
+            val config = Configurator(requiredConfig, Paths.get("credentials"))
             val gmailSecrets = GmailSecrets(
                     config.get(GMAIL_FORWARDER_GMAIL_CLIENT_SECRET),
                     config.get(GMAIL_FORWARDER_GMAIL_ACCESS_TOKEN),

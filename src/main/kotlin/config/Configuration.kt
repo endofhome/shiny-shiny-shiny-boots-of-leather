@@ -10,9 +10,9 @@ data class Configuration(private val config: Map<RequiredConfigItem, String?>, p
     }
 
     fun get(item: RequiredConfigItem): String = try {
-        this.config[item]!!
+        this.config.filter { it.key.name == item.name }.toList().first().second!!
     } catch (e: Exception) {
-        throw ConfigurationException("$item was not available during get")
+        throw ConfigurationException("${item.name} was not available during get")
     }
 
     inline fun <reified T> getAsListOf(item: RequiredConfigItem, transform: (String) -> T, delimiter: Char = ','): List<T> = try {
@@ -27,8 +27,8 @@ data class Configuration(private val config: Map<RequiredConfigItem, String?>, p
             else                   -> ""
         }
 
-        if (required.sorted() != provided.keys.sorted() || provided.values.contains(null)) {
-            val completelyMissing  = required.filter { provided.contains(it).not() }
+        if (required.map { it.name }.sorted() != provided.keys.map { it.name }.sorted() || provided.values.contains(null)) {
+            val completelyMissing  = required.filter { provided.map { it.key.name }.contains(it.name).not() }
             val nullValues = provided.filter { it.value == null }.keys
             val missingConfig = completelyMissing + nullValues
             throw ConfigurationException(

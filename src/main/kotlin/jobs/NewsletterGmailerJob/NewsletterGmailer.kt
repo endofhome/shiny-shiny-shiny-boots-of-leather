@@ -5,7 +5,6 @@ import com.google.api.services.gmail.model.Message
 import config.Configuration
 import config.Configurator
 import config.RequiredConfig
-import config.RequiredConfigItem
 import config.stringToDayOfWeek
 import config.stringToInt
 import datastore.ApplicationState
@@ -23,22 +22,6 @@ import gmail.SimpleGmailClient
 import gmail.decodeRawAsStringWithoutMessageId
 import jobs.Job
 import jobs.JobCompanion
-import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_BCC_ADDRESS
-import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_BODY_A
-import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_BODY_B
-import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_DROPBOX_ACCESS_TOKEN
-import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_FOOTER
-import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_FROM_ADDRESS
-import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_FROM_FULLNAME
-import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_GMAIL_ACCESS_TOKEN
-import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_GMAIL_CLIENT_SECRET
-import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_GMAIL_REFRESH_TOKEN
-import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_JOB_NAME
-import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_RUN_AFTER_TIME
-import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_RUN_AFTER_TZDB
-import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_RUN_ON_DAYS
-import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_SUBJECT_A
-import jobs.NewsletterGmailerJob.NewsletterGmailer.Companion.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_SUBJECT_B
 import jobs.NewsletterGmailerJob.NewsletterGmailer.Members
 import jobs.NewsletterGmailerJob.NewsletterGmailer.NewsletterGmailerStatus
 import jobs.NewsletterGmailerJob.NewsletterGmailer.NewsletterGmailerStatus.CLEANING_THIS_WEEK
@@ -68,93 +51,51 @@ import java.time.ZonedDateTime
 import javax.mail.internet.AddressException
 import javax.mail.internet.InternetAddress
 
-class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val appStateDatastore: DropboxDatastore<NewsletterGmailerState>, private val membersDatastore: DropboxDatastore<Members>, private val config: Configuration): Job {
-    override val jobName: String = config.get(NEWSLETTER_GMAILER_JOB_NAME)
+class NewsletterGmailer(override val jobName: String, private val gmailClient: SimpleGmailClient, private val appStateDatastore: DropboxDatastore<NewsletterGmailerState>, private val membersDatastore: DropboxDatastore<Members>, private val config: Configuration): Job {
 
     companion object: JobCompanion {
-
-        sealed class NewsletterGmailerConfigItem : RequiredConfigItem {
-            object NEWSLETTER_GMAILER_JOB_NAME : NewsletterGmailerConfigItem()
-            object NEWSLETTER_GMAILER_GMAIL_CLIENT_SECRET : NewsletterGmailerConfigItem()
-            object NEWSLETTER_GMAILER_GMAIL_ACCESS_TOKEN : NewsletterGmailerConfigItem()
-            object NEWSLETTER_GMAILER_GMAIL_REFRESH_TOKEN : NewsletterGmailerConfigItem()
-            object NEWSLETTER_GMAILER_DROPBOX_ACCESS_TOKEN : NewsletterGmailerConfigItem()
-            object NEWSLETTER_GMAILER_RUN_ON_DAYS : NewsletterGmailerConfigItem()
-            object NEWSLETTER_GMAILER_RUN_AFTER_TIME : NewsletterGmailerConfigItem()
-            object NEWSLETTER_GMAILER_FROM_ADDRESS : NewsletterGmailerConfigItem()
-            object NEWSLETTER_GMAILER_FROM_FULLNAME : NewsletterGmailerConfigItem()
-            object NEWSLETTER_GMAILER_BCC_ADDRESS : NewsletterGmailerConfigItem()
-            object NEWSLETTER_GMAILER_SUBJECT_A : NewsletterGmailerConfigItem()
-            object NEWSLETTER_GMAILER_SUBJECT_B : NewsletterGmailerConfigItem()
-            object NEWSLETTER_GMAILER_BODY_A : NewsletterGmailerConfigItem()
-            object NEWSLETTER_GMAILER_BODY_B : NewsletterGmailerConfigItem()
-            object NEWSLETTER_GMAILER_FOOTER : NewsletterGmailerConfigItem()
-            object NEWSLETTER_GMAILER_RUN_AFTER_TZDB : NewsletterGmailerConfigItem()
-        }
-
-        class NewsletterGmailerConfig: RequiredConfig {
-            override fun values() = setOf(
-                    NEWSLETTER_GMAILER_JOB_NAME,
-                    NEWSLETTER_GMAILER_GMAIL_CLIENT_SECRET,
-                    NEWSLETTER_GMAILER_GMAIL_ACCESS_TOKEN,
-                    NEWSLETTER_GMAILER_GMAIL_REFRESH_TOKEN,
-                    NEWSLETTER_GMAILER_DROPBOX_ACCESS_TOKEN,
-                    NEWSLETTER_GMAILER_RUN_ON_DAYS,
-                    NEWSLETTER_GMAILER_RUN_AFTER_TIME,
-                    NEWSLETTER_GMAILER_FROM_ADDRESS,
-                    NEWSLETTER_GMAILER_FROM_FULLNAME,
-                    NEWSLETTER_GMAILER_BCC_ADDRESS,
-                    NEWSLETTER_GMAILER_SUBJECT_A,
-                    NEWSLETTER_GMAILER_SUBJECT_B,
-                    NEWSLETTER_GMAILER_BODY_A,
-                    NEWSLETTER_GMAILER_BODY_B,
-                    NEWSLETTER_GMAILER_FOOTER,
-                    NEWSLETTER_GMAILER_RUN_AFTER_TZDB
-            )
-        }
-
-        override fun initialise(): NewsletterGmailer {
-            val config = Configurator(NewsletterGmailerConfig(), Paths.get("credentials"))
+        override fun initialise(jobName: String, requiredConfig: RequiredConfig): NewsletterGmailer {
+            val config = Configurator(requiredConfig, Paths.get("credentials"))
             val gmailSecrets = GmailSecrets(
-                    config.get(NEWSLETTER_GMAILER_GMAIL_CLIENT_SECRET),
-                    config.get(NEWSLETTER_GMAILER_GMAIL_ACCESS_TOKEN),
-                    config.get(NEWSLETTER_GMAILER_GMAIL_REFRESH_TOKEN)
+                    config.get(NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_GMAIL_CLIENT_SECRET(jobName)),
+                    config.get(NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_GMAIL_ACCESS_TOKEN(jobName)),
+                    config.get(NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_GMAIL_REFRESH_TOKEN(jobName))
             )
-            val gmail = AuthorisedGmailProvider(4000, config.get(NEWSLETTER_GMAILER_JOB_NAME), gmailSecrets, config).gmail()
+            val gmail = AuthorisedGmailProvider(4000, jobName, gmailSecrets, config).gmail()
             val gmailClient = HttpGmailClient(gmail)
-            val dropboxClient = HttpDropboxClient(config.get(NEWSLETTER_GMAILER_JOB_NAME), config.get(NEWSLETTER_GMAILER_DROPBOX_ACCESS_TOKEN))
+            val dropboxClient = HttpDropboxClient(jobName, config.get(NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_DROPBOX_ACCESS_TOKEN(jobName)))
             val appStateMetadata = FlatFileApplicationStateMetadata("/newsletter_gmailer.json", NewsletterGmailerState::class.java)
             val appStateDatastore = DropboxDatastore(dropboxClient, appStateMetadata)
             val membersMetadata = FlatFileApplicationStateMetadata("/members2.json", Members::class.java)
             val membersDatastore = DropboxDatastore(dropboxClient, membersMetadata)
-            return NewsletterGmailer(gmailClient, appStateDatastore, membersDatastore, config)
+            return NewsletterGmailer(jobName, gmailClient, appStateDatastore, membersDatastore, config)
         }
     }
 
     override fun run(now: ZonedDateTime): String =
         shouldRunFor(now).flatMap { ExternalStateRetriever(appStateDatastore, membersDatastore).retrieve() }
-                      .flatMap { externalState -> externalState.checkNoEmailSentToday(now.toLocalDate()) }
-                      .flatMap { externalState ->
-                          when (externalState.appState.status) {
-                              CLEANING_THIS_WEEK     -> notCleaningContext(externalState)
-                              NOT_CLEANING_THIS_WEEK -> cleaningContext(externalState)
-                          }
-                      }
-                      .flatMap { context -> context.validateNotADuplicate() }
-                      .flatMap { context -> context.sendAsGmailMessage() }
-                      .flatMap { context -> updateAppStateInDb(
-                                                context.toGmailMessage(),
-                                                context.appState,
-                                                context.cleanerOnNotice,
-                                                context.successMessage,
-                                                now) }
-                      .orElse { error -> error.message }
+                         .flatMap { externalState -> externalState.checkNoEmailSentToday(now.toLocalDate()) }
+                         .flatMap { externalState ->
+                             when (externalState.appState.status) {
+                                 CLEANING_THIS_WEEK     -> notCleaningContext(externalState)
+                                 NOT_CLEANING_THIS_WEEK -> cleaningContext(externalState)
+                             }
+                         }
+                         .flatMap { context -> context.validateNotADuplicate() }
+                         .flatMap { context -> context.sendAsGmailMessage() }
+                         .flatMap { context -> updateAppStateInDb(
+                                                   context.toGmailMessage(),
+                                                   context.appState,
+                                                   context.cleanerOnNotice,
+                                                   context.successMessage,
+                                                   now) }
+                         .orElse { error -> error.message }
 
     private fun shouldRunFor(now: ZonedDateTime): Result<NoNeedToRun, ZonedDateTime> {
-        val daysToRun: List<DayOfWeek> = config.getAsListOf(NEWSLETTER_GMAILER_RUN_ON_DAYS, stringToDayOfWeek)
-        val timeFromConfig = config.getAsListOf(NEWSLETTER_GMAILER_RUN_AFTER_TIME, stringToInt, ':')
+        val daysToRun: List<DayOfWeek> = config.getAsListOf(NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_RUN_ON_DAYS(jobName), stringToDayOfWeek)
+        val timeFromConfig = config.getAsListOf(NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_RUN_AFTER_TIME(jobName), stringToInt, ':')
         val timeToRunAfter = LocalTime.of(timeFromConfig[0], timeFromConfig[1])
-        val requiredTimeZone = ZoneId.of(config.get(NEWSLETTER_GMAILER_RUN_AFTER_TZDB))
+        val requiredTimeZone = ZoneId.of(config.get(NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_RUN_AFTER_TZDB(jobName)))
         val zonedDateTimeToRunAfter = ZonedDateTime.of(now.toLocalDate(), timeToRunAfter, requiredTimeZone)
         val dayOfWeek = now.dayOfWeek
         val nowInRequiredZone = now.withZoneSameInstant(requiredTimeZone)
@@ -179,8 +120,8 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
                 externalState.appState,
                 externalState.members,
                 externalState.members.allInternetAddresses(),
-                CompiledTemplate.from(RawTemplate(config.get(NEWSLETTER_GMAILER_SUBJECT_A)), emailModel),
-                CompiledTemplate.from(RawTemplate(config.get(NEWSLETTER_GMAILER_BODY_A) + config.get(NEWSLETTER_GMAILER_FOOTER)), emailModel),
+                CompiledTemplate.from(RawTemplate(config.get(NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_SUBJECT_A(jobName))), emailModel),
+                CompiledTemplate.from(RawTemplate(config.get(NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_BODY_A(jobName)) + config.get(NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_FOOTER(jobName))), emailModel),
                 CompiledTemplate.from(RawTemplate("{{cleaner}} is cleaning this week - an email has been sent to all members."), emailModel),
                 externalState.members.nextMemberAfter(cleanerOnNotice)
         ).asSuccess()
@@ -193,8 +134,8 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
                 externalState.appState,
                 externalState.members,
                 listOf(externalState.appState.nextUp.internetAddress()),
-                CompiledTemplate.from(RawTemplate(config.get(NEWSLETTER_GMAILER_SUBJECT_B)), emailModel),
-                CompiledTemplate.from(RawTemplate(config.get(NEWSLETTER_GMAILER_BODY_B) + config.get(NEWSLETTER_GMAILER_FOOTER)), emailModel),
+                CompiledTemplate.from(RawTemplate(config.get(NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_SUBJECT_B(jobName))), emailModel),
+                CompiledTemplate.from(RawTemplate(config.get(NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_BODY_B(jobName)) + config.get(NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_FOOTER(jobName))), emailModel),
                 CompiledTemplate.from(RawTemplate("There is no cleaning this week - an email reminder has been sent to {{cleaner}} who is cleaning next week."), emailModel),
                 cleanerOnNotice
         ).asSuccess()
@@ -223,11 +164,11 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
 
     private fun Context.toGmailMessage() : Message {
         val from = InternetAddress(
-                config.get(NEWSLETTER_GMAILER_FROM_ADDRESS),
-                config.get(NEWSLETTER_GMAILER_FROM_FULLNAME)
+                config.get(NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_FROM_ADDRESS(jobName)),
+                config.get(NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_FROM_FULLNAME(jobName))
         )
         val to = recipients
-        val bccResult = config.get(NEWSLETTER_GMAILER_BCC_ADDRESS).toInternetAddresses()
+        val bccResult = config.get(NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_BCC_ADDRESS(jobName)).toInternetAddresses()
         val bcc = (bccResult as Success).value
         val subject = emailSubject.value
         val body = emailBody.value
@@ -291,6 +232,7 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
             }
         }
     }
+
 }
 
 data class NewsletterGmailerState(

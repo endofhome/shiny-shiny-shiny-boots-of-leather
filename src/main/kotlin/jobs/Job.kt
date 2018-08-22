@@ -1,5 +1,6 @@
 package jobs
 
+import config.RequiredConfig
 import java.time.ZonedDateTime
 
 interface Job {
@@ -8,5 +9,5 @@ interface Job {
 }
 
 interface JobCompanion {
-    fun initialise(): Job
+    fun initialise(jobName: String, requiredConfig: RequiredConfig): Job
 }
