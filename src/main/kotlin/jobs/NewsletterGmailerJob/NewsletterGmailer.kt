@@ -26,6 +26,21 @@ import jobs.NewsletterGmailerJob.NewsletterGmailer.Members
 import jobs.NewsletterGmailerJob.NewsletterGmailer.NewsletterGmailerStatus
 import jobs.NewsletterGmailerJob.NewsletterGmailer.NewsletterGmailerStatus.CLEANING_THIS_WEEK
 import jobs.NewsletterGmailerJob.NewsletterGmailer.NewsletterGmailerStatus.NOT_CLEANING_THIS_WEEK
+import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.BCC_ADDRESS
+import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.BODY_A
+import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.BODY_B
+import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.DROPBOX_ACCESS_TOKEN
+import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.FOOTER
+import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.FROM_ADDRESS
+import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.FROM_FULLNAME
+import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.GMAIL_ACCESS_TOKEN
+import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.GMAIL_CLIENT_SECRET
+import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.GMAIL_REFRESH_TOKEN
+import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.RUN_AFTER_TIME
+import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.RUN_AFTER_TZDB
+import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.RUN_ON_DAYS
+import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.SUBJECT_A
+import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.SUBJECT_B
 import jobs.NewsletterGmailerJob.TemplatedMessage.CompiledTemplate
 import jobs.NewsletterGmailerJob.TemplatedMessage.RawTemplate
 import result.AnEmailAlreadySentToday
@@ -59,13 +74,13 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
             val config = Configurator(requiredConfig, Paths.get("credentials"))
             val jobName = config.requiredConfig.formattedJobName
             val gmailSecrets = GmailSecrets(
-                    config.get(NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_GMAIL_CLIENT_SECRET(jobName)),
-                    config.get(NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_GMAIL_ACCESS_TOKEN(jobName)),
-                    config.get(NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_GMAIL_REFRESH_TOKEN(jobName))
+                    config.get(GMAIL_CLIENT_SECRET(jobName)),
+                    config.get(GMAIL_ACCESS_TOKEN(jobName)),
+                    config.get(GMAIL_REFRESH_TOKEN(jobName))
             )
             val gmail = AuthorisedGmailProvider(4000, jobName.value, gmailSecrets, config).gmail()
             val gmailClient = HttpGmailClient(gmail)
-            val dropboxClient = HttpDropboxClient(jobName.value, config.get(NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_DROPBOX_ACCESS_TOKEN(jobName)))
+            val dropboxClient = HttpDropboxClient(jobName.value, config.get(DROPBOX_ACCESS_TOKEN(jobName)))
             val appStateMetadata = FlatFileApplicationStateMetadata("/newsletter_gmailer.json", NewsletterGmailerState::class.java)
             val appStateDatastore = DropboxDatastore(dropboxClient, appStateMetadata)
             val membersMetadata = FlatFileApplicationStateMetadata("/members2.json", Members::class.java)
@@ -94,10 +109,10 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
                          .orElse { error -> error.message }
 
     private fun shouldRunFor(now: ZonedDateTime): Result<NoNeedToRun, ZonedDateTime> {
-        val daysToRun: List<DayOfWeek> = config.getAsListOf(NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_RUN_ON_DAYS(jobName), stringToDayOfWeek)
-        val timeFromConfig = config.getAsListOf(NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_RUN_AFTER_TIME(jobName), stringToInt, ':')
+        val daysToRun: List<DayOfWeek> = config.getAsListOf(RUN_ON_DAYS(jobName), stringToDayOfWeek)
+        val timeFromConfig = config.getAsListOf(RUN_AFTER_TIME(jobName), stringToInt, ':')
         val timeToRunAfter = LocalTime.of(timeFromConfig[0], timeFromConfig[1])
-        val requiredTimeZone = ZoneId.of(config.get(NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_RUN_AFTER_TZDB(jobName)))
+        val requiredTimeZone = ZoneId.of(config.get(RUN_AFTER_TZDB(jobName)))
         val zonedDateTimeToRunAfter = ZonedDateTime.of(now.toLocalDate(), timeToRunAfter, requiredTimeZone)
         val dayOfWeek = now.dayOfWeek
         val nowInRequiredZone = now.withZoneSameInstant(requiredTimeZone)
@@ -122,8 +137,8 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
                 externalState.appState,
                 externalState.members,
                 externalState.members.allInternetAddresses(),
-                CompiledTemplate.from(RawTemplate(config.get(NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_SUBJECT_A(jobName))), emailModel),
-                CompiledTemplate.from(RawTemplate(config.get(NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_BODY_A(jobName)) + config.get(NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_FOOTER(jobName))), emailModel),
+                CompiledTemplate.from(RawTemplate(config.get(SUBJECT_A(jobName))), emailModel),
+                CompiledTemplate.from(RawTemplate(config.get(BODY_A(jobName)) + config.get(FOOTER(jobName))), emailModel),
                 CompiledTemplate.from(RawTemplate("{{cleaner}} is cleaning this week - an email has been sent to all members."), emailModel),
                 externalState.members.nextMemberAfter(cleanerOnNotice)
         ).asSuccess()
@@ -136,8 +151,8 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
                 externalState.appState,
                 externalState.members,
                 listOf(externalState.appState.nextUp.internetAddress()),
-                CompiledTemplate.from(RawTemplate(config.get(NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_SUBJECT_B(jobName))), emailModel),
-                CompiledTemplate.from(RawTemplate(config.get(NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_BODY_B(jobName)) + config.get(NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_FOOTER(jobName))), emailModel),
+                CompiledTemplate.from(RawTemplate(config.get(SUBJECT_B(jobName))), emailModel),
+                CompiledTemplate.from(RawTemplate(config.get(BODY_B(jobName)) + config.get(FOOTER(jobName))), emailModel),
                 CompiledTemplate.from(RawTemplate("There is no cleaning this week - an email reminder has been sent to {{cleaner}} who is cleaning next week."), emailModel),
                 cleanerOnNotice
         ).asSuccess()
@@ -166,11 +181,11 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
 
     private fun Context.toGmailMessage() : Message {
         val from = InternetAddress(
-                config.get(NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_FROM_ADDRESS(jobName)),
-                config.get(NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_FROM_FULLNAME(jobName))
+                config.get(FROM_ADDRESS(jobName)),
+                config.get(FROM_FULLNAME(jobName))
         )
         val to = recipients
-        val bccResult = config.get(NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_BCC_ADDRESS(jobName)).toInternetAddresses()
+        val bccResult = config.get(BCC_ADDRESS(jobName)).toInternetAddresses()
         val bcc = (bccResult as Success).value
         val subject = emailSubject.value
         val body = emailBody.value

@@ -17,17 +17,17 @@ import jobs.GmailForwarderTest.FileLike
 import jobs.GmailForwarderTest.StubDropboxClient
 import jobs.GmailForwarderTest.StubGmailClient
 import jobs.GmailForwarderTest.StubGmailClientThatCannotSend
-import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_BCC_ADDRESS
-import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_BODY_A
-import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_BODY_B
-import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_FOOTER
-import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_FROM_ADDRESS
-import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_FROM_FULLNAME
-import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_RUN_AFTER_TIME
-import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_RUN_AFTER_TZDB
-import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_RUN_ON_DAYS
-import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_SUBJECT_A
-import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.NEWSLETTER_GMAILER_SUBJECT_B
+import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.BCC_ADDRESS
+import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.BODY_A
+import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.BODY_B
+import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.FOOTER
+import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.FROM_ADDRESS
+import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.FROM_FULLNAME
+import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.RUN_AFTER_TIME
+import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.RUN_AFTER_TZDB
+import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.RUN_ON_DAYS
+import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.SUBJECT_A
+import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.SUBJECT_B
 import jobs.NewsletterGmailerJob.TemplatedMessage.CompiledTemplate
 import jobs.NewsletterGmailerJob.TemplatedMessage.RawTemplate
 import org.junit.Test
@@ -44,17 +44,17 @@ class NewsletterGmailerTest {
     private val time = ZonedDateTime.of(2018, 6, 4, 10, 30, 0, 0, ZoneOffset.UTC)
     private val baseConfigValues = NewsletterGmailerConfig(jobName.value).values().associate { it to "unused" }.toMutableMap()
     private val configValues: Map<NewsletterGmailerConfigItem, String> = baseConfigValues.apply {
-        removeAndSet(NEWSLETTER_GMAILER_RUN_ON_DAYS(jobName), "Monday")
-        removeAndSet(NEWSLETTER_GMAILER_RUN_AFTER_TIME(jobName), "10:30")
-        removeAndSet(NEWSLETTER_GMAILER_FROM_ADDRESS(jobName), "bob@example.com")
-        removeAndSet(NEWSLETTER_GMAILER_FROM_FULLNAME(jobName), "Bobby")
-        removeAndSet(NEWSLETTER_GMAILER_BCC_ADDRESS(jobName), "fred@example.com")
-        removeAndSet(NEWSLETTER_GMAILER_SUBJECT_A(jobName), "subject A with {{cleaner}}")
-        removeAndSet(NEWSLETTER_GMAILER_BODY_A(jobName), "body A with {{cleaner}}")
-        removeAndSet(NEWSLETTER_GMAILER_SUBJECT_B(jobName), "subject B with {{cleaner}}")
-        removeAndSet(NEWSLETTER_GMAILER_BODY_B(jobName), "body B with {{cleaner}}")
-        removeAndSet(NEWSLETTER_GMAILER_FOOTER(jobName), "<br>some footer")
-        removeAndSet(NEWSLETTER_GMAILER_RUN_AFTER_TZDB(jobName), "Europe/London")
+        removeAndSet(RUN_ON_DAYS(jobName), "Monday")
+        removeAndSet(RUN_AFTER_TIME(jobName), "10:30")
+        removeAndSet(FROM_ADDRESS(jobName), "bob@example.com")
+        removeAndSet(FROM_FULLNAME(jobName), "Bobby")
+        removeAndSet(BCC_ADDRESS(jobName), "fred@example.com")
+        removeAndSet(SUBJECT_A(jobName), "subject A with {{cleaner}}")
+        removeAndSet(BODY_A(jobName), "body A with {{cleaner}}")
+        removeAndSet(SUBJECT_B(jobName), "subject B with {{cleaner}}")
+        removeAndSet(BODY_B(jobName), "body B with {{cleaner}}")
+        removeAndSet(FOOTER(jobName), "<br>some footer")
+        removeAndSet(RUN_AFTER_TZDB(jobName), "Europe/London")
     }.toMap()
 
     @Suppress("UNCHECKED_CAST")
@@ -104,13 +104,13 @@ class NewsletterGmailerTest {
         val emailModel = mapOf("cleaner" to nextUpFullName)
         val expectedEmail = Email(
             from = InternetAddress(
-                config.get(NEWSLETTER_GMAILER_FROM_ADDRESS(jobName)),
-                config.get(NEWSLETTER_GMAILER_FROM_FULLNAME(jobName))
+                config.get(FROM_ADDRESS(jobName)),
+                config.get(FROM_FULLNAME(jobName))
             ),
             to = listOf(InternetAddress("milford@graves.com", "Milford"), InternetAddress("carla@azar.com", "Carla Azar")),
-            bcc = listOf(InternetAddress(config.get(NEWSLETTER_GMAILER_BCC_ADDRESS(jobName)))),
-            subject = CompiledTemplate.from(RawTemplate(config.get(NEWSLETTER_GMAILER_SUBJECT_A(jobName))), emailModel).value,
-            body = CompiledTemplate.from(RawTemplate(config.get(NEWSLETTER_GMAILER_BODY_A(jobName)) + config.get(NEWSLETTER_GMAILER_FOOTER(jobName))), emailModel).value
+            bcc = listOf(InternetAddress(config.get(BCC_ADDRESS(jobName)))),
+            subject = CompiledTemplate.from(RawTemplate(config.get(SUBJECT_A(jobName))), emailModel).value,
+            body = CompiledTemplate.from(RawTemplate(config.get(BODY_A(jobName)) + config.get(FOOTER(jobName))), emailModel).value
         ).toGmailMessage()
 
         val expectedEndState =
@@ -173,13 +173,13 @@ class NewsletterGmailerTest {
         val emailModel = mapOf("cleaner" to nextUpName)
         val expectedEmail = Email(
             from = InternetAddress(
-                config.get(NEWSLETTER_GMAILER_FROM_ADDRESS(jobName)),
-                config.get(NEWSLETTER_GMAILER_FROM_FULLNAME(jobName))
+                config.get(FROM_ADDRESS(jobName)),
+                config.get(FROM_FULLNAME(jobName))
             ),
             to = listOf(InternetAddress(nextUpEmailAddress, nextUpName)),
-            bcc = listOf(InternetAddress(config.get(NEWSLETTER_GMAILER_BCC_ADDRESS(jobName)))),
-            subject = CompiledTemplate.from(RawTemplate(config.get(NEWSLETTER_GMAILER_SUBJECT_B(jobName))), emailModel).value,
-            body = CompiledTemplate.from(RawTemplate(config.get(NEWSLETTER_GMAILER_BODY_B(jobName)) + config.get(NEWSLETTER_GMAILER_FOOTER(jobName))), emailModel).value
+            bcc = listOf(InternetAddress(config.get(BCC_ADDRESS(jobName)))),
+            subject = CompiledTemplate.from(RawTemplate(config.get(SUBJECT_B(jobName))), emailModel).value,
+            body = CompiledTemplate.from(RawTemplate(config.get(BODY_B(jobName)) + config.get(FOOTER(jobName))), emailModel).value
         ).toGmailMessage()
 
         val expectedEndState =
@@ -305,7 +305,7 @@ class NewsletterGmailerTest {
         val firstOfJune = ZonedDateTime.of(2018, 6, 3, 0, 0, 0, 0, ZoneOffset.UTC)
         val localConfig = config.copy(
                 config = configValues.toMutableMap()
-                        .apply { removeAndSet(NEWSLETTER_GMAILER_RUN_ON_DAYS(jobName), "Monday, Wednesday, Thursday") }
+                        .apply { removeAndSet(RUN_ON_DAYS(jobName), "Monday, Wednesday, Thursday") }
                         .toMap()
         )
         val jobResult = NewsletterGmailer(gmailClient, DropboxDatastore(dropboxClient, appStateMetadata), DropboxDatastore(dropboxClient, membersMetadata), localConfig).run(firstOfJune)
@@ -338,8 +338,8 @@ class NewsletterGmailerTest {
         val beforeTenThirty = ZonedDateTime.of(2018, 6, 4, 7, 14, 59, 0, ZoneOffset.UTC)
         val localConfig = config.copy(
                 config = configValues.toMutableMap()
-                        .apply { removeAndSet(NEWSLETTER_GMAILER_RUN_AFTER_TIME(jobName), "04:15") }
-                        .apply { removeAndSet(NEWSLETTER_GMAILER_RUN_AFTER_TZDB(jobName), "America/Sao_Paulo") }
+                        .apply { removeAndSet(RUN_AFTER_TIME(jobName), "04:15") }
+                        .apply { removeAndSet(RUN_AFTER_TZDB(jobName), "America/Sao_Paulo") }
                         .toMap()
         )
         val jobResult = NewsletterGmailer(gmailClient, DropboxDatastore(dropboxClient, appStateMetadata), DropboxDatastore(dropboxClient, membersMetadata), localConfig).run(beforeTenThirty)

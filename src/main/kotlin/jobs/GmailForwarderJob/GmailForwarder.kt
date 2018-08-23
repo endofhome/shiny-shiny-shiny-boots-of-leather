@@ -18,17 +18,17 @@ import gmail.SimpleGmailClient
 import gmail.encode
 import gmail.replaceRecipient
 import gmail.replaceSender
-import jobs.GmailForwarderJob.GmailForwarderConfigItem.GMAIL_FORWARDER_BCC_ADDRESS
-import jobs.GmailForwarderJob.GmailForwarderConfigItem.GMAIL_FORWARDER_DROPBOX_ACCESS_TOKEN
-import jobs.GmailForwarderJob.GmailForwarderConfigItem.GMAIL_FORWARDER_FROM_ADDRESS
-import jobs.GmailForwarderJob.GmailForwarderConfigItem.GMAIL_FORWARDER_FROM_FULLNAME
-import jobs.GmailForwarderJob.GmailForwarderConfigItem.GMAIL_FORWARDER_GMAIL_ACCESS_TOKEN
-import jobs.GmailForwarderJob.GmailForwarderConfigItem.GMAIL_FORWARDER_GMAIL_CLIENT_SECRET
-import jobs.GmailForwarderJob.GmailForwarderConfigItem.GMAIL_FORWARDER_GMAIL_QUERY
-import jobs.GmailForwarderJob.GmailForwarderConfigItem.GMAIL_FORWARDER_GMAIL_REFRESH_TOKEN
-import jobs.GmailForwarderJob.GmailForwarderConfigItem.GMAIL_FORWARDER_RUN_ON_DAYS
-import jobs.GmailForwarderJob.GmailForwarderConfigItem.GMAIL_FORWARDER_TO_ADDRESS
-import jobs.GmailForwarderJob.GmailForwarderConfigItem.GMAIL_FORWARDER_TO_FULLNAME
+import jobs.GmailForwarderJob.GmailForwarderConfigItem.BCC_ADDRESS
+import jobs.GmailForwarderJob.GmailForwarderConfigItem.DROPBOX_ACCESS_TOKEN
+import jobs.GmailForwarderJob.GmailForwarderConfigItem.FROM_ADDRESS
+import jobs.GmailForwarderJob.GmailForwarderConfigItem.FROM_FULLNAME
+import jobs.GmailForwarderJob.GmailForwarderConfigItem.GMAIL_ACCESS_TOKEN
+import jobs.GmailForwarderJob.GmailForwarderConfigItem.GMAIL_CLIENT_SECRET
+import jobs.GmailForwarderJob.GmailForwarderConfigItem.GMAIL_QUERY
+import jobs.GmailForwarderJob.GmailForwarderConfigItem.GMAIL_REFRESH_TOKEN
+import jobs.GmailForwarderJob.GmailForwarderConfigItem.RUN_ON_DAYS
+import jobs.GmailForwarderJob.GmailForwarderConfigItem.TO_ADDRESS
+import jobs.GmailForwarderJob.GmailForwarderConfigItem.TO_FULLNAME
 import jobs.Job
 import jobs.JobCompanion
 import result.AnEmailAlreadySentThisMonth
@@ -61,13 +61,13 @@ class GmailForwarder(private val gmailClient: SimpleGmailClient, private val dro
             val jobName = requiredConfig.formattedJobName
             val config = Configurator(requiredConfig, Paths.get("credentials"))
             val gmailSecrets = GmailSecrets(
-                    config.get(GMAIL_FORWARDER_GMAIL_CLIENT_SECRET(jobName)),
-                    config.get(GMAIL_FORWARDER_GMAIL_ACCESS_TOKEN(jobName)),
-                    config.get(GMAIL_FORWARDER_GMAIL_REFRESH_TOKEN(jobName))
+                    config.get(GMAIL_CLIENT_SECRET(jobName)),
+                    config.get(GMAIL_ACCESS_TOKEN(jobName)),
+                    config.get(GMAIL_REFRESH_TOKEN(jobName))
             )
             val gmail = AuthorisedGmailProvider(4000, jobName.value, gmailSecrets, config).gmail()
             val gmailClient = HttpGmailClient(gmail)
-            val dropboxClient = HttpDropboxClient(jobName.value, config.get(GMAIL_FORWARDER_DROPBOX_ACCESS_TOKEN((jobName))))
+            val dropboxClient = HttpDropboxClient(jobName.value, config.get(DROPBOX_ACCESS_TOKEN((jobName))))
             return GmailForwarder(gmailClient, dropboxClient, config)
         }
     }
@@ -75,7 +75,7 @@ class GmailForwarder(private val gmailClient: SimpleGmailClient, private val dro
     override fun run(now: ZonedDateTime): String {
         val appStateMetadata = FlatFileApplicationStateMetadata("/gmailer_state.json", GmailForwarderState::class.java)
         val datastore: Datastore<GmailForwarderState> = DropboxDatastore(dropboxClient, appStateMetadata)
-        val runOnDays: List<Int> = config.getAsListOf(GMAIL_FORWARDER_RUN_ON_DAYS(jobName), stringToInt)
+        val runOnDays: List<Int> = config.getAsListOf(RUN_ON_DAYS(jobName), stringToInt)
         val shouldRunNow = runOnDays.includes(now.dayOfMonth)
 
         return shouldRunNow.flatMap { datastore.currentApplicationState() }
@@ -94,7 +94,7 @@ class GmailForwarder(private val gmailClient: SimpleGmailClient, private val dro
             return newEmailContents.contentEquals(previousEmailContents)
         }
 
-        val gmailQuery = config.get(GMAIL_FORWARDER_GMAIL_QUERY(jobName))
+        val gmailQuery = config.get(GMAIL_QUERY(jobName))
         val searchResult = gmailClient.lastEmailForQuery(gmailQuery)
         val emailBytes = searchResult?.let {
             gmailClient.rawContentOf(searchResult)
@@ -113,11 +113,11 @@ class GmailForwarder(private val gmailClient: SimpleGmailClient, private val dro
     }
 
     private fun tryToSendEmail(datastore: Datastore<GmailForwarderState>, rawMessageToSend: ByteArray): String {
-        val recipient = InternetAddress(config.get(GMAIL_FORWARDER_TO_ADDRESS(jobName)), config.get(GMAIL_FORWARDER_TO_FULLNAME(jobName)))
+        val recipient = InternetAddress(config.get(TO_ADDRESS(jobName)), config.get(TO_FULLNAME(jobName)))
         val clonedMessageWithNewHeaders = gmailClient.newMessageFrom(rawMessageToSend).run {
-            replaceSender(InternetAddress(config.get(GMAIL_FORWARDER_FROM_ADDRESS(jobName)), config.get(GMAIL_FORWARDER_FROM_FULLNAME(jobName))))
+            replaceSender(InternetAddress(config.get(FROM_ADDRESS(jobName)), config.get(FROM_FULLNAME(jobName))))
             replaceRecipient(recipient, RecipientType.TO)
-            replaceRecipient(InternetAddress(config.get(GMAIL_FORWARDER_BCC_ADDRESS(jobName))), RecipientType.BCC)
+            replaceRecipient(InternetAddress(config.get(BCC_ADDRESS(jobName))), RecipientType.BCC)
             encode()
         }
 

@@ -13,12 +13,12 @@ import gmail.SimpleGmailClient
 import jobs.GmailForwarderJob.GmailForwarder
 import jobs.GmailForwarderJob.GmailForwarderConfig
 import jobs.GmailForwarderJob.GmailForwarderConfigItem
-import jobs.GmailForwarderJob.GmailForwarderConfigItem.GMAIL_FORWARDER_BCC_ADDRESS
-import jobs.GmailForwarderJob.GmailForwarderConfigItem.GMAIL_FORWARDER_FROM_ADDRESS
-import jobs.GmailForwarderJob.GmailForwarderConfigItem.GMAIL_FORWARDER_GMAIL_QUERY
-import jobs.GmailForwarderJob.GmailForwarderConfigItem.GMAIL_FORWARDER_RUN_ON_DAYS
-import jobs.GmailForwarderJob.GmailForwarderConfigItem.GMAIL_FORWARDER_TO_ADDRESS
-import jobs.GmailForwarderJob.GmailForwarderConfigItem.GMAIL_FORWARDER_TO_FULLNAME
+import jobs.GmailForwarderJob.GmailForwarderConfigItem.BCC_ADDRESS
+import jobs.GmailForwarderJob.GmailForwarderConfigItem.FROM_ADDRESS
+import jobs.GmailForwarderJob.GmailForwarderConfigItem.GMAIL_QUERY
+import jobs.GmailForwarderJob.GmailForwarderConfigItem.RUN_ON_DAYS
+import jobs.GmailForwarderJob.GmailForwarderConfigItem.TO_ADDRESS
+import jobs.GmailForwarderJob.GmailForwarderConfigItem.TO_FULLNAME
 import org.junit.Test
 import result.CouldNotSendEmail
 import result.Result
@@ -34,11 +34,11 @@ class GmailForwarderTest {
     private val jobName = requiredConfig.formattedJobName
     private val baseConfigValues = requiredConfig.values().associate { it to "unused" }.toMutableMap()
     private val configValues: Map<GmailForwarderConfigItem, String> = baseConfigValues.apply {
-        removeAndSet(GMAIL_FORWARDER_RUN_ON_DAYS(jobName), "1")
-        removeAndSet(GMAIL_FORWARDER_TO_FULLNAME(jobName), "Jim")
-        removeAndSet(GMAIL_FORWARDER_TO_ADDRESS(jobName), "jim@example.com")
-        removeAndSet(GMAIL_FORWARDER_FROM_ADDRESS(jobName), "bob@example.com")
-        removeAndSet(GMAIL_FORWARDER_BCC_ADDRESS(jobName), "fred@example.com")
+        removeAndSet(RUN_ON_DAYS(jobName), "1")
+        removeAndSet(TO_FULLNAME(jobName), "Jim")
+        removeAndSet(TO_ADDRESS(jobName), "jim@example.com")
+        removeAndSet(FROM_ADDRESS(jobName), "bob@example.com")
+        removeAndSet(BCC_ADDRESS(jobName), "fred@example.com")
     }.toMap()
     @Suppress("UNCHECKED_CAST")
     private val config = Configuration(configValues as Map<RequiredConfigItem, String>, requiredConfig, null)
@@ -141,7 +141,7 @@ class GmailForwarderTest {
         val firstOfJune = ZonedDateTime.of(2018, 6, 1, 0, 0, 0, 0, UTC)
         val localConfig = config.copy(
                 config = configValues.toMutableMap()
-                                     .apply { removeAndSet(GMAIL_FORWARDER_RUN_ON_DAYS(jobName), "2, 11,12, 31 ") }
+                                     .apply { removeAndSet(RUN_ON_DAYS(jobName), "2, 11,12, 31 ") }
                                      .toMap()
         )
         val jobResult = GmailForwarder(StubGmailClient(emails), dropboxClient, localConfig).run(firstOfJune)
@@ -213,7 +213,7 @@ class GmailForwarderTest {
         val dropboxClient = StubDropboxClient(mapOf(stateFilename to stateFile))
         val localConfig = config.copy(
                 config = configValues.toMutableMap()
-                                     .apply { removeAndSet(GMAIL_FORWARDER_GMAIL_QUERY(jobName), "some search query") }
+                                     .apply { removeAndSet(GMAIL_QUERY(jobName), "some search query") }
                                      .toMap()
         )
         val jobResult = GmailForwarder(StubGmailClientThatReturnsNoMatches(emptyList()), dropboxClient, localConfig).run(time)
