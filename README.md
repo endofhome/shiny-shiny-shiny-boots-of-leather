@@ -8,14 +8,16 @@
 A pluggable job scheduling system written in Kotlin.
 
 ### What is a job?
-At the time of writing there is only one job, which performs a search query against a Gmail account and forwards the latest email matching that query to a specified email address. The current state of the application is simple, so is stored in a blob of JSON in a file in Dropbox.
+At the time of writing there are two jobs included in this repo:
+  1. Gmail Forwarder job, which performs a search query against a Gmail account and forwards the latest email matching that query to a specified email address. The current state of the application is simple, so is stored in a blob of JSON in a file in Dropbox.
+  2. Cleaning Rota Gmailer job, which alternates between sending one of two possible messages to either one or a group of recipients as an email via the Gmail API. The current state of the application is simple, so is stored in a blob of JSON in a file in Dropbox.
 
 A job is defined as a Kotlin class containing some code - the job itself, and a companion object containing required configuration values.
 
 The entire app is run on Heroku using the Heroku Scheduler plugin, but it could just as easily be run via a CRON job or similar. 
 
 ### What do I need to run it?
-* kotlin
+* Kotlin/JVM
 * Any necessary third-party accounts/API access configured (depending on the jobs being run)
 * The configuration values required for each job. These can be provided in files in the `credentials` directory or as environment variables. There is a `JOB_SPEC.md` file in the package for each job. See the example of the GmailForwarder job [here](src/main/kotlin/jobs/GmailForwarderJob/JOB_SPEC.md).
 
