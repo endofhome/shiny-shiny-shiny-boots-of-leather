@@ -1,4 +1,4 @@
-package jobs.NewsletterGmailerJob
+package jobs.CleaningRotaGmailerJob
 
 import com.google.api.services.gmail.model.Message
 import com.natpryce.hamkrest.assertion.assertThat
@@ -13,23 +13,23 @@ import datastore.FlatFileApplicationStateMetadata
 import datastore.expectSuccess
 import gmail.Email
 import gmail.assertEmailEqual
+import jobs.CleaningRotaGmailerJob.CleaningRotaGmailerConfigItem.BCC_ADDRESS
+import jobs.CleaningRotaGmailerJob.CleaningRotaGmailerConfigItem.BODY_A
+import jobs.CleaningRotaGmailerJob.CleaningRotaGmailerConfigItem.BODY_B
+import jobs.CleaningRotaGmailerJob.CleaningRotaGmailerConfigItem.FOOTER
+import jobs.CleaningRotaGmailerJob.CleaningRotaGmailerConfigItem.FROM_ADDRESS
+import jobs.CleaningRotaGmailerJob.CleaningRotaGmailerConfigItem.FROM_FULLNAME
+import jobs.CleaningRotaGmailerJob.CleaningRotaGmailerConfigItem.RUN_AFTER_TIME
+import jobs.CleaningRotaGmailerJob.CleaningRotaGmailerConfigItem.RUN_AFTER_TZDB
+import jobs.CleaningRotaGmailerJob.CleaningRotaGmailerConfigItem.RUN_ON_DAYS
+import jobs.CleaningRotaGmailerJob.CleaningRotaGmailerConfigItem.SUBJECT_A
+import jobs.CleaningRotaGmailerJob.CleaningRotaGmailerConfigItem.SUBJECT_B
+import jobs.CleaningRotaGmailerJob.TemplatedMessage.CompiledTemplate
+import jobs.CleaningRotaGmailerJob.TemplatedMessage.RawTemplate
 import jobs.GmailForwarderTest.FileLike
 import jobs.GmailForwarderTest.StubDropboxClient
 import jobs.GmailForwarderTest.StubGmailClient
 import jobs.GmailForwarderTest.StubGmailClientThatCannotSend
-import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.BCC_ADDRESS
-import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.BODY_A
-import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.BODY_B
-import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.FOOTER
-import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.FROM_ADDRESS
-import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.FROM_FULLNAME
-import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.RUN_AFTER_TIME
-import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.RUN_AFTER_TZDB
-import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.RUN_ON_DAYS
-import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.SUBJECT_A
-import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.SUBJECT_B
-import jobs.NewsletterGmailerJob.TemplatedMessage.CompiledTemplate
-import jobs.NewsletterGmailerJob.TemplatedMessage.RawTemplate
 import org.junit.Test
 import result.Result
 import result.Result.Failure
@@ -39,11 +39,11 @@ import javax.mail.internet.InternetAddress
 
 val jobName = FormattedJobName("TEST_JOB")
 
-class NewsletterGmailerTest {
+class CleaningRotaGmailerTest {
 
     private val time = ZonedDateTime.of(2018, 6, 4, 10, 30, 0, 0, ZoneOffset.UTC)
-    private val baseConfigValues = NewsletterGmailerConfig(jobName.value).values().associate { it to "unused" }.toMutableMap()
-    private val configValues: Map<NewsletterGmailerConfigItem, String> = baseConfigValues.apply {
+    private val baseConfigValues = CleaningRotaGmailerConfig(jobName.value).values().associate { it to "unused" }.toMutableMap()
+    private val configValues: Map<CleaningRotaGmailerConfigItem, String> = baseConfigValues.apply {
         removeAndSet(RUN_ON_DAYS(jobName), "Monday")
         removeAndSet(RUN_AFTER_TIME(jobName), "10:30")
         removeAndSet(FROM_ADDRESS(jobName), "bob@example.com")
@@ -58,7 +58,7 @@ class NewsletterGmailerTest {
     }.toMap()
 
     @Suppress("UNCHECKED_CAST")
-    private val config = Configuration(configValues as Map<RequiredConfigItem, String>, NewsletterGmailerConfig(jobName.value), null)
+    private val config = Configuration(configValues as Map<RequiredConfigItem, String>, CleaningRotaGmailerConfig(jobName.value), null)
     private val membersState =
           """
           |{
@@ -78,8 +78,8 @@ class NewsletterGmailerTest {
     private val appStatefilename = "/newsletter_gmailer.json"
     private val membersFilename = "/members.json"
     private val membersFile = FileLike(membersFilename, membersState)
-    private val appStateMetadata = FlatFileApplicationStateMetadata(appStatefilename, NewsletterGmailerState::class.java)
-    private val membersMetadata = FlatFileApplicationStateMetadata(membersFile.name, NewsletterGmailer.Members::class.java)
+    private val appStateMetadata = FlatFileApplicationStateMetadata(appStatefilename, CleaningRotaGmailerState::class.java)
+    private val membersMetadata = FlatFileApplicationStateMetadata(membersFile.name, CleaningRotaGmailer.Members::class.java)
 
     @Test
     fun `Happy path when cleaning this week`() {
@@ -134,7 +134,7 @@ class NewsletterGmailerTest {
         val dropboxClient = StubDropboxClient(mapOf(appStatefilename to stateFile, membersFilename to membersFile))
         val gmailClient = StubGmailClient(emptyList())
         val appStateDatastore = DropboxDatastore(dropboxClient, appStateMetadata)
-        val jobResult = NewsletterGmailer(gmailClient, appStateDatastore, DropboxDatastore(dropboxClient, membersMetadata), config).run(time)
+        val jobResult = CleaningRotaGmailer(gmailClient, appStateDatastore, DropboxDatastore(dropboxClient, membersMetadata), config).run(time)
 
         assertEmailEqual(gmailClient.sentMail.last(), expectedEmail)
         assertThat(appStateDatastore.currentApplicationState().expectSuccess().asJsonString(), equalTo(expectedEndState.normaliseJsonString()))
@@ -196,7 +196,7 @@ class NewsletterGmailerTest {
           |""".trimMargin()
 
         val appStateDatastore = DropboxDatastore(dropboxClient, appStateMetadata)
-        val jobResult = NewsletterGmailer(gmailClient, appStateDatastore, DropboxDatastore(dropboxClient, membersMetadata), config).run(time)
+        val jobResult = CleaningRotaGmailer(gmailClient, appStateDatastore, DropboxDatastore(dropboxClient, membersMetadata), config).run(time)
 
         assertEmailEqual(gmailClient.sentMail.last(), expectedEmail)
         assertThat(appStateDatastore.currentApplicationState().expectSuccess().asJsonString(), equalTo(expectedEndState.normaliseJsonString()))
@@ -215,7 +215,7 @@ class NewsletterGmailerTest {
 
         val failingAppStateDatastore = DropboxDatastore(dropboxClientThatCannotRead, appStateMetadata)
         val successfulMembersDatastore = DropboxDatastore(dropboxClient, membersMetadata)
-        val jobResult = NewsletterGmailer(gmailClient, failingAppStateDatastore, successfulMembersDatastore, config).run(time)
+        val jobResult = CleaningRotaGmailer(gmailClient, failingAppStateDatastore, successfulMembersDatastore, config).run(time)
 
         assertThat(gmailClient.sentMail, equalTo(emptyList<Message>()))
         assertThat(jobResult, equalTo("Error downloading file /newsletter_gmailer.json from Dropbox"))
@@ -247,7 +247,7 @@ class NewsletterGmailerTest {
 
         val successfulAppStateDatastore = DropboxDatastore(dropboxClient, appStateMetadata)
         val failingMembersDatastore = DropboxDatastore(dropboxClientThatCannotRead, membersMetadata)
-        val jobResult = NewsletterGmailer(gmailClient, successfulAppStateDatastore, failingMembersDatastore, config).run(time)
+        val jobResult = CleaningRotaGmailer(gmailClient, successfulAppStateDatastore, failingMembersDatastore, config).run(time)
 
         assertThat(gmailClient.sentMail, equalTo(emptyList<Message>()))
         assertThat(jobResult, equalTo("Error downloading file /members.json from Dropbox"))
@@ -274,7 +274,7 @@ class NewsletterGmailerTest {
 
         val appDatastore = DropboxDatastore(dropboxClient, appStateMetadata)
         val membersDatastore = DropboxDatastore(dropboxClient, membersMetadata)
-        val jobResult = NewsletterGmailer(gmailClient, appDatastore, membersDatastore, config).run(time)
+        val jobResult = CleaningRotaGmailer(gmailClient, appDatastore, membersDatastore, config).run(time)
 
         assertThat(gmailClient.sentMail, equalTo(emptyList<Message>()))
         assertThat(jobResult, equalTo("Error sending email with subject 'subject A with Carla Azar' to Milford <milford@graves.com>, Carla Azar <carla@azar.com>"))
@@ -308,7 +308,7 @@ class NewsletterGmailerTest {
                         .apply { removeAndSet(RUN_ON_DAYS(jobName), "Monday, Wednesday, Thursday") }
                         .toMap()
         )
-        val jobResult = NewsletterGmailer(gmailClient, DropboxDatastore(dropboxClient, appStateMetadata), DropboxDatastore(dropboxClient, membersMetadata), localConfig).run(firstOfJune)
+        val jobResult = CleaningRotaGmailer(gmailClient, DropboxDatastore(dropboxClient, appStateMetadata), DropboxDatastore(dropboxClient, membersMetadata), localConfig).run(firstOfJune)
 
         assertThat(jobResult, equalTo("No need to run - today is Sunday, only running on Monday, Wednesday, Thursday"))
     }
@@ -342,7 +342,7 @@ class NewsletterGmailerTest {
                         .apply { removeAndSet(RUN_AFTER_TZDB(jobName), "America/Sao_Paulo") }
                         .toMap()
         )
-        val jobResult = NewsletterGmailer(gmailClient, DropboxDatastore(dropboxClient, appStateMetadata), DropboxDatastore(dropboxClient, membersMetadata), localConfig).run(beforeTenThirty)
+        val jobResult = CleaningRotaGmailer(gmailClient, DropboxDatastore(dropboxClient, appStateMetadata), DropboxDatastore(dropboxClient, membersMetadata), localConfig).run(beforeTenThirty)
 
         assertThat(jobResult, equalTo("No need to run - time is 04:14 in America/Sao_Paulo, only running after 04:15 in America/Sao_Paulo"))
     }
@@ -373,7 +373,7 @@ class NewsletterGmailerTest {
         val stateFile = FileLike(appStatefilename, appState)
         val dropboxClient = StubDropboxClient(mapOf(appStatefilename to stateFile, membersFilename to membersFile))
 
-        val jobResult = NewsletterGmailer(StubGmailClient(emptyList()), DropboxDatastore(dropboxClient, appStateMetadata), DropboxDatastore(dropboxClient, membersMetadata), config).run(time)
+        val jobResult = CleaningRotaGmailer(StubGmailClient(emptyList()), DropboxDatastore(dropboxClient, appStateMetadata), DropboxDatastore(dropboxClient, membersMetadata), config).run(time)
 
         assertThat(jobResult, equalTo("Exiting as this exact email has already been sent"))
     }
@@ -400,7 +400,7 @@ class NewsletterGmailerTest {
         val stateFile = FileLike(appStatefilename, appState)
         val dropboxClient = StubDropboxClient(mapOf(appStatefilename to stateFile, membersFilename to membersFile))
 
-        val jobResult = NewsletterGmailer(StubGmailClient(emptyList()), DropboxDatastore(dropboxClient, appStateMetadata), DropboxDatastore(dropboxClient, membersMetadata), config).run(time)
+        val jobResult = CleaningRotaGmailer(StubGmailClient(emptyList()), DropboxDatastore(dropboxClient, appStateMetadata), DropboxDatastore(dropboxClient, membersMetadata), config).run(time)
 
         assertThat(jobResult, equalTo("Exiting as an email has already been sent today"))
     }

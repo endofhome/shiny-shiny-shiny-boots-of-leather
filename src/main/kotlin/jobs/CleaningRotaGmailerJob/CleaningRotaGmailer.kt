@@ -1,4 +1,4 @@
-package jobs.NewsletterGmailerJob
+package jobs.CleaningRotaGmailerJob
 
 import com.github.jknack.handlebars.Handlebars
 import com.google.api.services.gmail.model.Message
@@ -20,29 +20,29 @@ import gmail.HttpGmailClient
 import gmail.MessageString
 import gmail.SimpleGmailClient
 import gmail.decodeRawAsStringWithoutMessageId
+import jobs.CleaningRotaGmailerJob.CleaningRotaGmailer.CleaningRotaGmailerStatus
+import jobs.CleaningRotaGmailerJob.CleaningRotaGmailer.CleaningRotaGmailerStatus.CLEANING_THIS_WEEK
+import jobs.CleaningRotaGmailerJob.CleaningRotaGmailer.CleaningRotaGmailerStatus.NOT_CLEANING_THIS_WEEK
+import jobs.CleaningRotaGmailerJob.CleaningRotaGmailer.Members
+import jobs.CleaningRotaGmailerJob.CleaningRotaGmailerConfigItem.BCC_ADDRESS
+import jobs.CleaningRotaGmailerJob.CleaningRotaGmailerConfigItem.BODY_A
+import jobs.CleaningRotaGmailerJob.CleaningRotaGmailerConfigItem.BODY_B
+import jobs.CleaningRotaGmailerJob.CleaningRotaGmailerConfigItem.DROPBOX_ACCESS_TOKEN
+import jobs.CleaningRotaGmailerJob.CleaningRotaGmailerConfigItem.FOOTER
+import jobs.CleaningRotaGmailerJob.CleaningRotaGmailerConfigItem.FROM_ADDRESS
+import jobs.CleaningRotaGmailerJob.CleaningRotaGmailerConfigItem.FROM_FULLNAME
+import jobs.CleaningRotaGmailerJob.CleaningRotaGmailerConfigItem.GMAIL_ACCESS_TOKEN
+import jobs.CleaningRotaGmailerJob.CleaningRotaGmailerConfigItem.GMAIL_CLIENT_SECRET
+import jobs.CleaningRotaGmailerJob.CleaningRotaGmailerConfigItem.GMAIL_REFRESH_TOKEN
+import jobs.CleaningRotaGmailerJob.CleaningRotaGmailerConfigItem.RUN_AFTER_TIME
+import jobs.CleaningRotaGmailerJob.CleaningRotaGmailerConfigItem.RUN_AFTER_TZDB
+import jobs.CleaningRotaGmailerJob.CleaningRotaGmailerConfigItem.RUN_ON_DAYS
+import jobs.CleaningRotaGmailerJob.CleaningRotaGmailerConfigItem.SUBJECT_A
+import jobs.CleaningRotaGmailerJob.CleaningRotaGmailerConfigItem.SUBJECT_B
+import jobs.CleaningRotaGmailerJob.TemplatedMessage.CompiledTemplate
+import jobs.CleaningRotaGmailerJob.TemplatedMessage.RawTemplate
 import jobs.Job
 import jobs.JobCompanion
-import jobs.NewsletterGmailerJob.NewsletterGmailer.Members
-import jobs.NewsletterGmailerJob.NewsletterGmailer.NewsletterGmailerStatus
-import jobs.NewsletterGmailerJob.NewsletterGmailer.NewsletterGmailerStatus.CLEANING_THIS_WEEK
-import jobs.NewsletterGmailerJob.NewsletterGmailer.NewsletterGmailerStatus.NOT_CLEANING_THIS_WEEK
-import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.BCC_ADDRESS
-import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.BODY_A
-import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.BODY_B
-import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.DROPBOX_ACCESS_TOKEN
-import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.FOOTER
-import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.FROM_ADDRESS
-import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.FROM_FULLNAME
-import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.GMAIL_ACCESS_TOKEN
-import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.GMAIL_CLIENT_SECRET
-import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.GMAIL_REFRESH_TOKEN
-import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.RUN_AFTER_TIME
-import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.RUN_AFTER_TZDB
-import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.RUN_ON_DAYS
-import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.SUBJECT_A
-import jobs.NewsletterGmailerJob.NewsletterGmailerConfigItem.SUBJECT_B
-import jobs.NewsletterGmailerJob.TemplatedMessage.CompiledTemplate
-import jobs.NewsletterGmailerJob.TemplatedMessage.RawTemplate
 import result.AnEmailAlreadySentToday
 import result.CouldNotSendEmail
 import result.NoNeedToRun
@@ -66,11 +66,11 @@ import java.time.ZonedDateTime
 import javax.mail.internet.AddressException
 import javax.mail.internet.InternetAddress
 
-class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val appStateDatastore: DropboxDatastore<NewsletterGmailerState>, private val membersDatastore: DropboxDatastore<Members>, private val config: Configuration): Job {
+class CleaningRotaGmailer(private val gmailClient: SimpleGmailClient, private val appStateDatastore: DropboxDatastore<CleaningRotaGmailerState>, private val membersDatastore: DropboxDatastore<Members>, private val config: Configuration): Job {
     override val jobName = config.requiredConfig.formattedJobName
 
     companion object: JobCompanion {
-        override fun initialise(requiredConfig: RequiredConfig): NewsletterGmailer {
+        override fun initialise(requiredConfig: RequiredConfig): CleaningRotaGmailer {
             val config = Configurator(requiredConfig, Paths.get("credentials"))
             val jobName = config.requiredConfig.formattedJobName
             val gmailSecrets = GmailSecrets(
@@ -81,11 +81,11 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
             val gmail = AuthorisedGmailProvider(4000, jobName.value, gmailSecrets, config).gmail()
             val gmailClient = HttpGmailClient(gmail)
             val dropboxClient = HttpDropboxClient(jobName.value, config.get(DROPBOX_ACCESS_TOKEN(jobName)))
-            val appStateMetadata = FlatFileApplicationStateMetadata("/newsletter_gmailer.json", NewsletterGmailerState::class.java)
+            val appStateMetadata = FlatFileApplicationStateMetadata("/cleaning_rota_gmailer.json", CleaningRotaGmailerState::class.java)
             val appStateDatastore = DropboxDatastore(dropboxClient, appStateMetadata)
             val membersMetadata = FlatFileApplicationStateMetadata("/members2.json", Members::class.java)
             val membersDatastore = DropboxDatastore(dropboxClient, membersMetadata)
-            return NewsletterGmailer(gmailClient, appStateDatastore, membersDatastore, config)
+            return CleaningRotaGmailer(gmailClient, appStateDatastore, membersDatastore, config)
         }
     }
 
@@ -168,11 +168,11 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
     private fun Context.sendAsGmailMessage(): Result<CouldNotSendEmail, Context> =
         gmailClient.send(this.toGmailMessage(), this.emailSubject.value, this.recipients).map { this }
 
-    private fun updateAppStateInDb(message: Message, appState: NewsletterGmailerState, cleanerOnNotice: Member, successMessage: TemplatedMessage, now: ZonedDateTime): Result<DropboxWriteFailure, String> {
-        val nextStatus: NewsletterGmailerStatus = appState.status.flip()
+    private fun updateAppStateInDb(message: Message, appState: CleaningRotaGmailerState, cleanerOnNotice: Member, successMessage: TemplatedMessage, now: ZonedDateTime): Result<DropboxWriteFailure, String> {
+        val nextStatus: CleaningRotaGmailerStatus = appState.status.flip()
         val cleaner = if (nextStatus == CLEANING_THIS_WEEK) appState.nextUp else null
         val newEmailContents = gmailClient.newMessageFrom(message.decodeRaw()).content.toString()
-        val newState = NewsletterGmailerState(nextStatus, cleaner, cleanerOnNotice, now.toLocalDate(), newEmailContents)
+        val newState = CleaningRotaGmailerState(nextStatus, cleaner, cleanerOnNotice, now.toLocalDate(), newEmailContents)
         return appStateDatastore.store(newState, successMessage.value)
     }
 
@@ -193,7 +193,7 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
         return email.toGmailMessage()
     }
 
-    private fun NewsletterGmailerStatus.flip() = when (this) {
+    private fun CleaningRotaGmailerStatus.flip() = when (this) {
         CLEANING_THIS_WEEK     -> NOT_CLEANING_THIS_WEEK
         NOT_CLEANING_THIS_WEEK -> CLEANING_THIS_WEEK
     }
@@ -208,7 +208,7 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
             }
         }
 
-    enum class NewsletterGmailerStatus {
+    enum class CleaningRotaGmailerStatus {
         CLEANING_THIS_WEEK,
         NOT_CLEANING_THIS_WEEK
     }
@@ -225,16 +225,16 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
     }
 
     data class Context(
-            val appState: NewsletterGmailerState,
-            val members: Members,
-            val recipients: List<InternetAddress>,
-            val emailSubject: TemplatedMessage,
-            val emailBody: TemplatedMessage,
-            val successMessage: TemplatedMessage,
-            val cleanerOnNotice: Member
+        val appState: CleaningRotaGmailerState,
+        val members: Members,
+        val recipients: List<InternetAddress>,
+        val emailSubject: TemplatedMessage,
+        val emailBody: TemplatedMessage,
+        val successMessage: TemplatedMessage,
+        val cleanerOnNotice: Member
     )
 
-    class ExternalStateRetriever(private val appStateDatastore: DropboxDatastore<NewsletterGmailerState>, private val membersDatastore: DropboxDatastore<Members>) {
+    class ExternalStateRetriever(private val appStateDatastore: DropboxDatastore<CleaningRotaGmailerState>, private val membersDatastore: DropboxDatastore<Members>) {
         fun retrieve(): Result<ErrorDownloadingFileFromDropbox, ExternalState> {
             val currentApplicationState = appStateDatastore.currentApplicationState()
             val currentMembers = membersDatastore.currentApplicationState()
@@ -252,12 +252,12 @@ class NewsletterGmailer(private val gmailClient: SimpleGmailClient, private val 
 
 }
 
-data class NewsletterGmailerState(
-        val status: NewsletterGmailerStatus,
-        val cleaner: Member?,
-        val nextUp: Member,
-        val lastRanOn: LocalDate,
-        val emailContents: String
+data class CleaningRotaGmailerState(
+    val status: CleaningRotaGmailerStatus,
+    val cleaner: Member?,
+    val nextUp: Member,
+    val lastRanOn: LocalDate,
+    val emailContents: String
 ) : ApplicationState
 
 data class Member(val name: String, val surname: String?, val email: String) {
@@ -265,7 +265,7 @@ data class Member(val name: String, val surname: String?, val email: String) {
     fun fullname(): String = "$name${surname?.let { " $it" } ?: ""}"
 }
 
-data class ExternalState(val appState: NewsletterGmailerState, val members: Members)
+data class ExternalState(val appState: CleaningRotaGmailerState, val members: Members)
 
 sealed class TemplatedMessage(val value: String) {
     class RawTemplate(message: String): TemplatedMessage(message)
