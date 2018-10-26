@@ -14,17 +14,15 @@ import java.time.ZonedDateTime
 
 fun main(args: Array<String>) {
     val mainConfig = Configurator(MainConfig(), Paths.get("credentials"))
-    val gmailForwarder = GmailForwarder.initialise(
-                            GmailForwarderConfig(
-                                    mainConfig.get(MAIN_GMAIL_FORWARDER_JOB_NAME(mainConfig.requiredConfig.formattedJobName))
-                            ))
-    val newsletterGmailer = CleaningRotaGmailer.initialise(
-                            CleaningRotaGmailerConfig(
-                                    mainConfig.get(MAIN_CLEANING_ROTA_GMAILER_JOB_NAME(mainConfig.requiredConfig.formattedJobName))
-                            ))
+    val mainJobName = mainConfig.requiredConfig.formattedJobName
+    val gmailForwarderConfig = GmailForwarderConfig(mainConfig.get(MAIN_GMAIL_FORWARDER_JOB_NAME(mainJobName)))
+    val cleaningRotaGmailerConfig = CleaningRotaGmailerConfig(mainConfig.get(MAIN_CLEANING_ROTA_GMAILER_JOB_NAME(mainJobName)))
+
+    val gmailForwarder = GmailForwarder.initialise(gmailForwarderConfig)
+    val cleaningRotaGmailer = CleaningRotaGmailer.initialise(cleaningRotaGmailerConfig)
     val jobs: List<Job> = listOf(
             gmailForwarder,
-            newsletterGmailer
+            cleaningRotaGmailer
     )
 
     jobs.forEach { job ->

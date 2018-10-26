@@ -75,7 +75,7 @@ class CleaningRotaGmailerTest {
           |  ]
           |}
           |""".trimMargin()
-    private val appStatefilename = "/newsletter_gmailer.json"
+    private val appStatefilename = "/cleaning_rota_gmailer.json"
     private val membersFilename = "/members.json"
     private val membersFile = FileLike(membersFilename, membersState)
     private val appStateMetadata = FlatFileApplicationStateMetadata(appStatefilename, CleaningRotaGmailerState::class.java)
@@ -218,7 +218,7 @@ class CleaningRotaGmailerTest {
         val jobResult = CleaningRotaGmailer(gmailClient, failingAppStateDatastore, successfulMembersDatastore, config).run(time)
 
         assertThat(gmailClient.sentMail, equalTo(emptyList<Message>()))
-        assertThat(jobResult, equalTo("Error downloading file /newsletter_gmailer.json from Dropbox"))
+        assertThat(jobResult, equalTo("Error downloading file /cleaning_rota_gmailer.json from Dropbox"))
     }
 
     @Test
