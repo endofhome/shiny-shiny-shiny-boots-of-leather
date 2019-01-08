@@ -27,4 +27,9 @@ The entire app is run on Heroku using the Heroku Scheduler plugin, but it could 
 * Run it `./gradlew run` (nb. this will blow up if required configuration values are missing)
 
 ### Technical notes
-Each push to GitHub builds on Travis CI and each successful build is deployed to Heroku.
+#### Configuration
+The application is able to validate that necessary environment variables have been provided for each job. Each job has a `RequiredConfig`, which specifies the environment variables required to run. The `config` package contains a `Configurator`, which performs a recursive search of system environment variables and an optional user-provided config file. A `Configuration` is returned, which self-validates against the `RequiredConfig` during object construction, and blows up with a useful error message if any variables are missing. Assuming that the Configuration was successfully constructed, it provides the user with safe public methods on which to retrieve the required values.
+This is my first attempt at solving this kind of problem, and whilst I'm reasonably happy with it I wonder if it is a little convoluted. The sealed class that contains each job's required configuration is a little curious, I would have preferred an enum for this case but this is the only way I could find to make it work due to the constraints of the language. I considered whether this package should actually be a separate library but it is quite specific to the application due to the prefix which is specified per-job. It also doesn't provide support for type-safe and custom mapped deserialisation of environment variables as libraries like [Konfig](https://github.com/npryce/konfig) and [Configur8](https://github.com/daviddenton/configur8) do. Nevertheless, it *works* and it's *useful*.
+
+#### CI / Deployment
+Each push to GitHub builds on Travis CI and a successful build is deployed to Heroku.
