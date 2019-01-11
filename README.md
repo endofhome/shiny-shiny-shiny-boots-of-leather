@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/forty9er/shiny-shiny-shiny-boots-of-leather.svg?branch=master)](https://travis-ci.org/forty9er/shiny-shiny-shiny-boots-of-leather)
+[![Build Status](https://travis-ci.org/endofhome/shiny-shiny-shiny-boots-of-leather.svg?branch=master)](https://travis-ci.org/endofhome/shiny-shiny-shiny-boots-of-leather)
 
 ## Shiny shiny, shiny boots of leather.
 ##### Well, you wouldn't want your personal assistant wearing anything else, would you?
