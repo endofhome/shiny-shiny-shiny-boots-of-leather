@@ -49,7 +49,9 @@ import result.orElse
 import java.nio.file.Paths
 import java.time.YearMonth
 import java.time.ZonedDateTime
-import javax.mail.Message.RecipientType
+import java.util.Base64
+import javax.mail.Message.RecipientType.BCC
+import javax.mail.Message.RecipientType.TO
 import javax.mail.internet.InternetAddress
 
 class GmailForwarder(private val gmailClient: SimpleGmailClient, private val dropboxClient: SimpleDropboxClient, private val config: Configuration): Job {
@@ -70,6 +72,9 @@ class GmailForwarder(private val gmailClient: SimpleGmailClient, private val dro
             val dropboxClient = HttpDropboxClient(jobName.value, config.get(DROPBOX_ACCESS_TOKEN((jobName))))
             return GmailForwarder(gmailClient, dropboxClient, config)
         }
+
+        fun encodeBase64(s: String): String = Base64.getEncoder().encodeToString(s.toByteArray())
+        fun decodeBase64(s: String): String = String(Base64.getDecoder().decode(s))
     }
 
     override fun run(now: ZonedDateTime): String {
@@ -88,9 +93,9 @@ class GmailForwarder(private val gmailClient: SimpleGmailClient, private val dro
         fun ZonedDateTime.yearMonth(): YearMonth = YearMonth.from(this)
 
         fun thisExactEmailAlreadySent(emailBytes: ByteArray, applicationState: GmailForwarderState): Boolean {
-            val separatorBetweenHeaderAndMainContent = "________________________________"
-            val newEmailContents = String(emailBytes).substringAfter(separatorBetweenHeaderAndMainContent)
-            val previousEmailContents = applicationState.emailContents.substringAfter(separatorBetweenHeaderAndMainContent)
+            val emailString = String(emailBytes)
+            val newEmailContents = emailString.contentWithoutHeaders().trim()
+            val previousEmailContents = decodeBase64(applicationState.emailContents).trim()
             return newEmailContents.contentEquals(previousEmailContents)
         }
 
@@ -116,28 +121,40 @@ class GmailForwarder(private val gmailClient: SimpleGmailClient, private val dro
         val recipient = InternetAddress(config.get(TO_ADDRESS(jobName)), config.get(TO_FULLNAME(jobName)))
         val clonedMessageWithNewHeaders = gmailClient.newMessageFrom(rawMessageToSend).run {
             replaceSender(InternetAddress(config.get(FROM_ADDRESS(jobName)), config.get(FROM_FULLNAME(jobName))))
-            replaceRecipient(recipient, RecipientType.TO)
-            replaceRecipient(InternetAddress(config.get(BCC_ADDRESS(jobName))), RecipientType.BCC)
+            replaceRecipient(recipient, TO)
+            replaceRecipient(InternetAddress(config.get(BCC_ADDRESS(jobName))), BCC)
             encode()
         }
 
-        val subject = String(clonedMessageWithNewHeaders.decodeRaw()).substringBefore("\r\n")
+        val subject = String(clonedMessageWithNewHeaders.decodeRaw()).substringAfter("Subject: ").substringBefore("\r\n")
         return gmailClient.send(clonedMessageWithNewHeaders, subject, listOf(recipient))
                           .flatMap { message -> message.decodeRawWithResult() }
                           .flatMap { emailContents ->
-                              val newState = GmailForwarderState(ZonedDateTime.now(), emailContents)
+                              val newState = GmailForwarderState(ZonedDateTime.now(), encodeBase64(emailContents))
                               datastore.store(newState, "New email has been sent")
                           }
                           .orElse { error -> error.message }
     }
 
     private fun Message.decodeRawWithResult() : Result<ErrorDecoding, String> =
-            this.decodeRaw()?.let { Success(String(it)) } ?: Failure(ErrorDecoding("message was sent but updated state was not stored in Dropbox."))
+        this.decodeRaw()?.let { messageBytes ->
+            Success(String(messageBytes).contentWithoutHeaders())
+        } ?: Failure(ErrorDecoding("message was sent but updated state was not stored in Dropbox."))
 
     private fun List<Int>.includes(dayOfMonth: Int): Result<NoNeedToRunOnThisDayOfMonth, Int> = when {
         this.contains(dayOfMonth) -> Success(dayOfMonth)
         else                      -> Failure(NoNeedToRunOnThisDayOfMonth(dayOfMonth, this))
     }
+
+    private fun String.contentWithoutHeaders(): String =
+        this.substringAfter("Content-Type: multipart/")
+            .substringAfter("boundary=")
+            .substringBefore("\n")
+            .removeSurrounding("\"").let { boundary ->
+                this.substringAfter(boundary)
+                    .substringAfter(boundary)
+        }
+
 }
 
 data class GmailForwarderState(val lastEmailSent: ZonedDateTime, val emailContents: String) : ApplicationState

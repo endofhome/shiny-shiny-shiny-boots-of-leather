@@ -11,6 +11,7 @@ import datastore.ErrorDownloadingFileFromDropbox
 import datastore.SimpleDropboxClient
 import gmail.SimpleGmailClient
 import jobs.GmailForwarderJob.GmailForwarder
+import jobs.GmailForwarderJob.GmailForwarder.Companion.encodeBase64
 import jobs.GmailForwarderJob.GmailForwarderConfig
 import jobs.GmailForwarderJob.GmailForwarderConfigItem
 import jobs.GmailForwarderJob.GmailForwarderConfigItem.BCC_ADDRESS
@@ -50,7 +51,7 @@ class GmailForwarderTest {
         """
           |{
           |  "lastEmailSent": "${time.minusMonths(1)}",
-          |  "emailContents": "Last month's email data"
+          |  "emailContents": "${encodeBase64("Last month's email data")}"
           |}
           |""".trimMargin()
         val stateFile = FileLike(stateFilename, state)
@@ -70,7 +71,7 @@ class GmailForwarderTest {
                 """
           |{
           |  "lastEmailSent": "${time.withDayOfMonth(1)}",
-          |  "emailContents": "Fairly new email data"
+          |  "emailContents": "${encodeBase64("Fairly new email data")}"
           |}
           |""".trimMargin()
         val stateFile = FileLike(stateFilename, state)
@@ -87,7 +88,7 @@ class GmailForwarderTest {
                 """
           |{
           |  "lastEmailSent": "${time.plusSeconds(1)}",
-          |  "emailContents": "Next month's email data"
+          |  "emailContents": "${encodeBase64("Next month's email data")}"
           |}
           |""".trimMargin()
         val stateFile = FileLike("/gmailer_state.json", state)
@@ -100,27 +101,74 @@ class GmailForwarderTest {
 
     @Test
     fun `Email isn't sent if the exact same email contents have already been sent`() {
+        val realisticBody =
+            """
+        |Content-Type: text/plain; charset="iso-8859-1"
+        |MIME-Version: 1.0
+        |Content-Transfer-Encoding: quoted-printable
+        |
+        |Some plain text message
+        |over multiple
+        |lines.
+        |
+        |--_000_a08a0c7f4bf84c46bf8b5e5392ea7fa1________________________
+        |Content-Type: text/html; charset="iso-8859-1"
+        |Content-ID: <75FAD0DAF66DEF4BB802FB3442872FDC@springernature.com>
+        |MIME-Version: 1.0
+        |Content-Transfer-Encoding: quoted-printable
+        |
+        |<html>
+        |<head>
+        |<meta http-equiv=3D"Content-Type" content=3D"text/html; charset=3Diso-8859-=
+        |1">
+        |<title></title>
+        |</head>
+        |<body>
+        |<p style=3D"text-align: left; color: rgb(0, 0, 0); font-family: tahoma; fon=
+        |t-size: 9pt;">
+        |Some html message</p>
+        |<span style=3D"text-align: left; color: rgb(0, 0, 0); font-family: &quot;ta=
+        |homa&quot;,&quot;sans-serif&quot;; font-size: 8.5pt;">over mulitple</span>
+        |<div>lines.
+        |<br>
+        |<br>
+        |</div>
+        |</body>
+        |</html>
+        |
+        |--_000_a08a0c7f4bf84c46bf8b5e5392ea7fa1________________________--
+        |""".trimMargin()
+
+        val realisticEmail =
+            """
+        |From: Jim <jim@example.com>
+        |To: Bob <bob@example.com>
+        |Subject: An exciting email
+        |Date: Fri, 1 Feb 2019 08:47:55 +0000
+        |Message-ID: <a08a0c7f4bf84c46bf8b5e5392ea7fa1@some-server_.example.com>
+        |Reply-To: "DO-NOT-REPLY@example.com"
+        |	<DO-NOT-REPLY@example.com>
+        |Content-Type: multipart/alternative;
+        |	boundary="_000_a08a0c7f4bf84c46bf8b5e5392ea7fa1________________________"
+        |MIME-Version: 1.0
+        |Bcc: bcc@example.com
+        |
+        |--_000_a08a0c7f4bf84c46bf8b5e5392ea7fa1________________________
+        |$realisticBody
+        |""".trimMargin()
+
+
         val state =
-          """
+            """
           |{
           |  "lastEmailSent": "${time.minusMonths(1)}",
-          |  "emailContents": "
-          |     From: Bob
-          |     To: Jim
-          |     ________________________________
-          |     Already sent this one"
+          |  "emailContents": "${encodeBase64(realisticBody)}"
           |}
           |""".trimMargin()
-        val stateFile = FileLike("/gmailer_state.json", state)
+        val stateFile = FileLike(stateFilename, state)
 
         val dropboxClient = StubDropboxClient(mapOf(stateFilename to stateFile))
-        val emails = listOf(Message().setRaw(
-          """
-          |     From: Jim
-          |     To: Bob
-          |     ________________________________
-          |     Already sent this one
-          """.trimMargin()))
+        val emails = listOf(Message().setRaw(realisticEmail))
         val jobResult = GmailForwarder(StubGmailClient(emails), dropboxClient, config).run(time)
         assertThat(jobResult, equalTo("Exiting as this exact email has already been sent"))
     }
@@ -131,7 +179,7 @@ class GmailForwarderTest {
                 """
           |{
           |  "lastEmailSent": "${time.minusMonths(1)}",
-          |  "emailContents": "Last month's email data"
+          |  "emailContents": "${encodeBase64("Last month's email data")}"
           |}
           |""".trimMargin()
         val stateFile = FileLike("/gmailer_state.json", state)
@@ -154,7 +202,7 @@ class GmailForwarderTest {
                 """
           |{
           |  "lastEmailSent": "${time.minusMonths(1)}",
-          |  "emailContents": "Last month's email data"
+          |  "emailContents": "${encodeBase64("Last month's email data")}"
           |}
           |""".trimMargin()
         val stateFile = FileLike("/gmailer_state.json", state)
@@ -171,7 +219,7 @@ class GmailForwarderTest {
                 """
           |{
           |  "lastEmailSent": "${time.minusMonths(1)}",
-          |  "emailContents": "Last month's email data"
+          |  "emailContents": "${encodeBase64("Last month's email data")}"
           |}
           |""".trimMargin()
         val stateFile = FileLike("/gmailer_state.json", state)
@@ -188,7 +236,7 @@ class GmailForwarderTest {
                 """
           |{
           |  "lastEmailSent": "${time.minusMonths(1)}",
-          |  "emailContents": "Last month's email data"
+          |  "emailContents": "${encodeBase64("Last month's email data")}"
           |}
           |""".trimMargin()
         val stateFile = FileLike("/gmailer_state.json", state)
@@ -205,7 +253,7 @@ class GmailForwarderTest {
           """
           |{
           |  "lastEmailSent": "${time.minusMonths(1)}",
-          |  "emailContents": "Last month's email data"
+          |  "emailContents": "${encodeBase64("Last month's email data")}"
           |}
           |""".trimMargin()
         val stateFile = FileLike("/gmailer_state.json", state)
