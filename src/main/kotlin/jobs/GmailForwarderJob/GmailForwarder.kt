@@ -153,8 +153,8 @@ class GmailForwarder(private val gmailClient: SimpleGmailClient, private val dro
             .removeSurrounding("\"").let { boundary ->
                 this.substringAfter(boundary)
                     .substringAfter(boundary)
+                    .replace(boundary, "_____________________________________________________________")
         }
-
 }
 
 data class GmailForwarderState(val lastEmailSent: ZonedDateTime, val emailContents: String) : ApplicationState

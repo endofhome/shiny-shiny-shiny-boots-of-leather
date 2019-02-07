@@ -101,6 +101,8 @@ class GmailForwarderTest {
 
     @Test
     fun `Email isn't sent if the exact same email contents have already been sent`() {
+        val realisticBoundary = "_000_a08a0c7f4bf84c46bf8b5e5392ea7fa1________________________"
+
         val realisticBody =
             """
         |Content-Type: text/plain; charset="iso-8859-1"
@@ -111,9 +113,9 @@ class GmailForwarderTest {
         |over multiple
         |lines.
         |
-        |--_000_a08a0c7f4bf84c46bf8b5e5392ea7fa1________________________
+        |--$realisticBoundary
         |Content-Type: text/html; charset="iso-8859-1"
-        |Content-ID: <75FAD0DAF66DEF4BB802FB3442872FDC@springernature.com>
+        |Content-ID: <75FAD0DAF66DEF4BB802FB3442872FDC@______________.com>
         |MIME-Version: 1.0
         |Content-Transfer-Encoding: quoted-printable
         |
@@ -136,7 +138,7 @@ class GmailForwarderTest {
         |</body>
         |</html>
         |
-        |--_000_a08a0c7f4bf84c46bf8b5e5392ea7fa1________________________--
+        |--$realisticBoundary
         |""".trimMargin()
 
         val realisticEmail =
@@ -149,20 +151,20 @@ class GmailForwarderTest {
         |Reply-To: "DO-NOT-REPLY@example.com"
         |	<DO-NOT-REPLY@example.com>
         |Content-Type: multipart/alternative;
-        |	boundary="_000_a08a0c7f4bf84c46bf8b5e5392ea7fa1________________________"
+        |	boundary="$realisticBoundary"
         |MIME-Version: 1.0
         |Bcc: bcc@example.com
         |
-        |--_000_a08a0c7f4bf84c46bf8b5e5392ea7fa1________________________
+        |--$realisticBoundary
         |$realisticBody
         |""".trimMargin()
-
 
         val state =
             """
           |{
           |  "lastEmailSent": "${time.minusMonths(1)}",
-          |  "emailContents": "${encodeBase64(realisticBody)}"
+          |  "emailContents": "${encodeBase64(realisticBody
+                .replace(realisticBoundary, "_____________________________________________________________"))}"
           |}
           |""".trimMargin()
         val stateFile = FileLike(stateFilename, state)
