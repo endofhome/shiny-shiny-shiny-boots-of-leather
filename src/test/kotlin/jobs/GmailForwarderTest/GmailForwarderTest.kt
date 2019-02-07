@@ -57,7 +57,7 @@ class GmailForwarderTest {
         val stateFile = FileLike(stateFilename, state)
 
         val dropboxClient = StubDropboxClient(mapOf(stateFilename to stateFile))
-        val emails = listOf(Message().setRaw("New email data"))
+        val emails = listOf(Message().setRaw("Content-Type: multipart/alternative; boundary=\"---\"\r\nNew email data"))
         val jobResult = GmailForwarder(StubGmailClient(emails), dropboxClient, config).run(time)
         assertThat(jobResult, equalTo(
                 "New email has been sent\n" +
@@ -77,7 +77,7 @@ class GmailForwarderTest {
         val stateFile = FileLike(stateFilename, state)
 
         val dropboxClient = StubDropboxClient(mapOf(stateFilename to stateFile))
-        val emails = listOf(Message().setRaw("New email data"))
+        val emails = listOf(Message().setRaw("Content-Type: multipart/alternative; boundary=\"---\"\nNew email data"))
         val jobResult = GmailForwarder(StubGmailClient(emails), dropboxClient, config).run(time)
         assertThat(jobResult, equalTo("Exiting, email has already been sent for June 2018"))
     }
@@ -94,7 +94,7 @@ class GmailForwarderTest {
         val stateFile = FileLike("/gmailer_state.json", state)
 
         val dropboxClient = StubDropboxClient(mapOf(stateFilename to stateFile))
-        val emails = listOf(Message().setRaw("Last month's email data"))
+        val emails = listOf(Message().setRaw("Content-Type: multipart/alternative; boundary=\"---\"\nLast month's email data"))
         val jobResult = GmailForwarder(StubGmailClient(emails), dropboxClient, config).run(time)
         assertThat(jobResult, equalTo("Exiting due to invalid state, previous email appears to have been sent in the future"))
     }
@@ -210,9 +210,16 @@ class GmailForwarderTest {
         val stateFile = FileLike("/gmailer_state.json", state)
 
         val dropboxClient = StubDropboxClient(mapOf(stateFilename to stateFile))
-        val emails = listOf(Message().setRaw("New email data"))
+        val emails = listOf(Message().setRaw(
+            """
+            |Content-Type: multipart/alternative; boundary="---"
+            |Subject: New email subject
+            |---
+            |New email data
+            |""".trimMargin()
+        ))
         val jobResult = GmailForwarder(StubGmailClientThatCannotSend(emails), dropboxClient, config).run(time)
-        assertThat(jobResult, equalTo("Error sending email with subject 'New email data' to Jim <jim@example.com>"))
+        assertThat(jobResult, equalTo("Error sending email with subject 'New email subject' to Jim <jim@example.com>"))
     }
 
     @Test
@@ -227,7 +234,7 @@ class GmailForwarderTest {
         val stateFile = FileLike("/gmailer_state.json", state)
 
         val dropboxClient = StubDropboxClientThatCannotStore(mapOf(stateFilename to stateFile))
-        val emails = listOf(Message().setRaw("New email data"))
+        val emails = listOf(Message().setRaw("Content-Type: multipart/alternative; boundary=\"---\"\nNew email data"))
         val jobResult = GmailForwarder(StubGmailClient(emails), dropboxClient, config).run(time)
         assertThat(jobResult, equalTo("New email has been sent\nError - could not store state in Dropbox"))
     }
@@ -244,7 +251,7 @@ class GmailForwarderTest {
         val stateFile = FileLike("/gmailer_state.json", state)
 
         val dropboxClient = StubDropboxClient(mapOf(stateFilename to stateFile))
-        val emails = listOf(Message().setRaw("New email data"))
+        val emails = listOf(Message().setRaw("Content-Type: multipart/alternative; boundary=\"---\"\nNew email data"))
         val jobResult = GmailForwarder(StubGmailClientThatCannotRetrieveRawContent(emails), dropboxClient, config).run(time)
         assertThat(jobResult, equalTo("Error - could not get raw message content for email"))
     }
@@ -273,9 +280,26 @@ class GmailForwarderTest {
     @Test
     fun `Error message is provided when state file does not exist in Dropbox`() {
         val dropboxClient = StubDropboxClient(mapOf())
-        val emails = listOf(Message().setRaw("New email data"))
+        val emails = listOf(Message().setRaw("Content-Type: multipart/alternative; boundary=\"---\"\nNew email data"))
         val jobResult = GmailForwarder(StubGmailClient(emails), dropboxClient, config).run(time)
         assertThat(jobResult, equalTo("Error downloading file /gmailer_state.json from Dropbox"))
+    }
+
+    @Test
+    fun `Non multipart emails are not forwarded`() {
+        val state =
+            """
+          |{
+          |  "lastEmailSent": "${time.minusMonths(1)}",
+          |  "emailContents": "${encodeBase64("Last month's email data")}"
+          |}
+          |""".trimMargin()
+        val stateFile = FileLike(stateFilename, state)
+
+        val dropboxClient = StubDropboxClient(mapOf(stateFilename to stateFile))
+        val emails = listOf(Message().setRaw("Non-multipart email data"))
+        val jobResult = GmailForwarder(StubGmailClient(emails), dropboxClient, config).run(time)
+        assertThat(jobResult, equalTo("Error - forwarding non-multipart emails is not supported"))
     }
 }
 

@@ -38,6 +38,7 @@ import result.ErrorDecoding
 import result.InvalidStateInFuture
 import result.NoMatchingResultsForQuery
 import result.NoNeedToRunOnThisDayOfMonth
+import result.NonMultipartEmail
 import result.Result
 import result.Result.Failure
 import result.Result.Success
@@ -92,6 +93,8 @@ class GmailForwarder(private val gmailClient: SimpleGmailClient, private val dro
     private fun shouldTryToSend(applicationState: GmailForwarderState, now: ZonedDateTime): Result<Err, ByteArray> {
         fun ZonedDateTime.yearMonth(): YearMonth = YearMonth.from(this)
 
+        fun nonMultipartEmail(emailBytes: ByteArray): Boolean = String(emailBytes).contains("Content-Type: multipart/").not()
+
         fun thisExactEmailAlreadySent(emailBytes: ByteArray, applicationState: GmailForwarderState): Boolean {
             val emailString = String(emailBytes)
             val newEmailContents = emailString.contentWithoutHeaders().trim()
@@ -110,6 +113,7 @@ class GmailForwarder(private val gmailClient: SimpleGmailClient, private val dro
             lastEmailSent > now                                     -> Failure(InvalidStateInFuture())
             searchResult == null                                    -> Failure(NoMatchingResultsForQuery(gmailQuery))
             emailBytes == null                                      -> Failure(CouldNotGetRawContentForEmail())
+            nonMultipartEmail(emailBytes)                           -> Failure(NonMultipartEmail())
             thisExactEmailAlreadySent(emailBytes, applicationState) -> Failure(ThisEmailAlreadySent())
             lastEmailSent.yearMonth() == now.yearMonth()            -> Failure(AnEmailAlreadySentThisMonth(now))
             lastEmailSent.yearMonth() < now.yearMonth()             -> Success(emailBytes)

@@ -46,6 +46,11 @@ class NoMatchingResultsForQuery(queryString: String) : Err {
     override val message = "No matching results for query: '$queryString'"
 }
 
+class NonMultipartEmail: Err {
+    override val message: String = "Error - forwarding non-multipart emails is not supported"
+
+}
+
 class CouldNotGetRawContentForEmail : Err {
     override val message = "Error - could not get raw message content for email"
 }
