@@ -9,7 +9,7 @@ import jobs.Job
 import java.nio.file.Paths
 import java.time.ZonedDateTime
 
-fun main(args: Array<String>) {
+fun main() {
     val mainConfig = Configurator(MainConfig(), Paths.get("credentials"))
     val mainJobName = mainConfig.requiredConfig.formattedJobName
     val gmailForwarderConfig = GmailForwarderConfig(mainConfig.get(MAIN_GMAIL_FORWARDER_JOB_NAME(mainJobName)))
